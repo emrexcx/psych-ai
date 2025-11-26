@@ -154,13 +154,14 @@
     </div>
 
 <script>
-    // ⚠️⚠️⚠️ 必填：请把 ID 换成你自己的！ ⚠️⚠️⚠️
+    // ✅ 已更新为你的新头像 (images/xxx2.png)
+    // ✅ 已保留你提供的 Bot ID
     const agents = [
-        { id: 'freud', name: 'S. Freud', title: '精神分析', theme: 'card-freud', botId: '7576937790106402857', avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Freud&backgroundColor=e74c3c' },
-        { id: 'jung', name: 'C.G. Jung', title: '分析心理学', theme: 'card-jung', botId: '7576939753841508378', avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Jung&backgroundColor=9b59b6' },
-        { id: 'adler', name: 'A. Adler', title: '个体心理学', theme: 'card-adler', botId: '7576940585882550326', avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Adler&backgroundColor=f39c12' },
-        { id: 'contemporary', name: 'Contemporary', title: '当代动力学', theme: 'card-contemp', botId: '7576941130223255578', avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Relational&backgroundColor=20c997' },
-        { id: 'narrative', name: 'Narrative', title: '叙事治疗', theme: 'card-narrative', botId: '7576941141384544262', avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=White&backgroundColor=3498db' }
+        { id: 'freud', name: 'S. Freud', title: '精神分析', theme: 'card-freud', botId: '7576937790106402857', avatar: 'images/freud2.png' },
+        { id: 'jung', name: 'C.G. Jung', title: '分析心理学', theme: 'card-jung', botId: '7576939753841508378', avatar: 'images/jung2.png' },
+        { id: 'adler', name: 'A. Adler', title: '个体心理学', theme: 'card-adler', botId: '7576940585882550326', avatar: 'images/adler2.png' },
+        { id: 'contemporary', name: 'Contemporary', title: '当代动力学', theme: 'card-contemp', botId: '7576941130223255578', avatar: 'images/contemp2.png' },
+        { id: 'narrative', name: 'Narrative', title: '叙事治疗', theme: 'card-narrative', botId: '7576941141384544262', avatar: 'images/narrative2.png' }
     ];
 
     const container = document.getElementById('panels-container');
@@ -220,7 +221,7 @@
         btn.disabled = false; btn.innerText = '开始会诊';
     }
 
-    // ✅ 带日志过滤的 API 调用函数
+    // ✅ 核心：去重 + 去日志 + 去追问的 API 调用函数
     async function simulateCozeAPIStream(botId, fullPrompt, callback) {
         if(!botId) { callback("[错误: 未配置 Bot ID]"); return; }
 
@@ -251,11 +252,16 @@
                             if (rawJson === '[DONE]') continue;
                             const data = JSON.parse(rawJson);
                             
-                            // 🛑 核心过滤逻辑：只看 content，且过滤掉 JSON 日志
-                            if (data.event === 'conversation.message.delta' && data.message && data.message.content) {
+                            // ✂️ 1. 只允许 "正在输入" (delta) 的内容，防止重复
+                            if (data.event !== 'conversation.message.delta') continue;
+
+                            if (data.message && data.message.content) {
+                                // ✂️ 2. 过滤掉 "追问" (follow_up)
+                                if (data.message.type === 'follow_up') continue;
+
                                 const content = data.message.content;
                                 
-                                // 🛡️ 过滤掉代码日志
+                                // 🛡️ 3. 过滤掉代码日志
                                 if (!content.trim().startsWith('{')) {
                                     callback(content);
                                 }
