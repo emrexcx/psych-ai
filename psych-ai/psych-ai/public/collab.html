@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>心灵栖息地 - 温暖合作版</title>
+    <link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Noto+Serif+SC:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        /* --- 1. 温暖治愈色板 --- */
+        :root {
+            --warm-bg: #fdf6e3;       
+            --warm-wood: #8d6e63;     
+            --warm-accent: #ffb74d;   
+            --text-brown: #5d4037;    
+            --highlight: #ffd54f;     
+        }
+
+        body {
+            margin: 0; height: 100vh;
+            font-family: 'Patrick Hand', 'Noto Serif SC', serif;
+            color: var(--text-brown);
+            /* 背景图 */
+            background-image: url('https://images.unsplash.com/photo-1598529082412-60459cb5b405?q=80&w=2070');
+            background-size: cover; background-position: center; background-attachment: fixed;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+
+        body::before {
+            content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, rgba(253, 246, 227, 0.85) 0%, rgba(255, 224, 178, 0.7) 100%);
+            pointer-events: none; z-index: -1;
+        }
+
+        /* --- 主容器 --- */
+        #app-container {
+            width: 95%; max-width: 900px; height: 90vh;
+            background-color: #fffef8;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(93, 64, 55, 0.2), 0 0 0 10px rgba(255,255,255,0.3);
+            display: flex; flex-direction: column;
+            overflow: hidden;
+            border: 1px solid #e0e0e0;
+            position: relative;
+        }
+        #app-container::before {
+            content: ''; position: absolute; left: 30px; top: 0; bottom: 0; width: 2px;
+            background: repeating-linear-gradient(to bottom, #ffcdd2 0, #ffcdd2 2px, transparent 2px, transparent 30px);
+            z-index: 0; pointer-events: none;
+        }
+
+        /* --- 头部 --- */
+        .header {
+            padding: 20px 40px; text-align: center; z-index: 1;
+            background: rgba(255,255,255,0.9); border-bottom: 2px dashed #d7ccc8;
+            position: relative;
+        }
+        .header h1 { margin: 0; color: #4e342e; font-size: 24px; letter-spacing: 2px; }
+        .header p { margin: 5px 0 0; color: #8d6e63; font-size: 14px; }
+        
+        .home-link {
+            position: absolute; right: 20px; top: 50%; transform: translateY(-50%);
+            text-decoration: none; color: #8d6e63; font-size: 14px; border: 1px solid #d7ccc8;
+            padding: 5px 12px; border-radius: 20px; transition: 0.2s;
+        }
+        .home-link:hover { background: #8d6e63; color: #fff; }
+
+        /* --- 选人区域 --- */
+        #selection-area {
+            padding: 15px; background: #fff8e1;
+            display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;
+            border-bottom: 1px solid #ffe082; z-index: 2;
+        }
+        
+        .agent-option {
+            display: flex; flex-direction: column; align-items: center; cursor: pointer;
+            opacity: 0.5; transition: 0.3s; transform: scale(0.9);
+        }
+        .agent-option:hover { opacity: 0.8; transform: scale(1.0); }
+        
+        .agent-option.selected { opacity: 1; transform: scale(1.1); }
+        .agent-option.selected .avatar-img {
+            border-color: var(--warm-accent);
+            box-shadow: 0 0 0 4px rgba(255, 183, 77, 0.3);
+        }
+        
+        .avatar-img {
+            width: 50px; height: 50px; border-radius: 50%; background-size: cover;
+            border: 3px solid #e0e0e0; transition: 0.3s; background-color: #fff;
+        }
+        .agent-label { margin-top: 5px; font-size: 12px; font-weight: bold; color: #5d4037; }
+
+        /* --- 聊天流 --- */
+        #chat-stream {
+            flex: 1; overflow-y: auto; padding: 30px 50px;
+            display: flex; flex-direction: column; gap: 25px; z-index: 1;
+            background-image: repeating-linear-gradient(transparent, transparent 39px, #e0e0e0 39px, #e0e0e0 40px);
+            background-attachment: local; 
+        }
+        #chat-stream::-webkit-scrollbar { width: 6px; }
+        #chat-stream::-webkit-scrollbar-thumb { background: #d7ccc8; border-radius: 3px; }
+
+        .message-card {
+            background: #fff; padding: 20px; border-radius: 2px 15px 15px 15px;
+            box-shadow: 2px 4px 8px rgba(0,0,0,0.05); border: 1px solid #f0f0f0;
+            max-width: 85%; line-height: 1.8; font-size: 16px; position: relative;
+            animation: fadeIn 0.5s ease; align-self: flex-start;
+        }
+        /* Markdown 样式 */
+        .message-card strong { color: #d84315; font-weight: bold; }
+        .message-card p { margin-bottom: 10px; }
+
+        @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+        
+        .message-card::before { 
+            content: ''; position: absolute; top: -8px; left: 20px; width: 50px; height: 12px;
+            background: rgba(255, 213, 79, 0.5); transform: rotate(-2deg);
+        }
+
+        .expert-header { display: flex; align-items: center; margin-bottom: 10px; border-bottom: 1px dashed #eee; padding-bottom: 5px;}
+        .expert-header img { width: 24px; height: 24px; border-radius: 50%; margin-right: 8px; }
+        .expert-name { font-size: 13px; color: #8d6e63; font-weight: bold; }
+
+        .user-message {
+            align-self: flex-end; background: #e0f2f1; border-radius: 15px 2px 15px 15px;
+            border-color: #b2dfdb;
+        }
+        .user-message::before { background: rgba(128, 203, 196, 0.4); left: auto; right: 20px; transform: rotate(2deg); }
+
+        /* --- 底部输入 --- */
+        .input-area {
+            padding: 20px; background: #fff; z-index: 2;
+            border-top: 1px solid #eee; display: flex; gap: 15px;
+        }
+        input {
+            flex: 1; padding: 12px 20px; border: 2px solid #e0e0e0; border-radius: 25px;
+            background: #fafafa; font-family: inherit; font-size: 16px; outline: none; transition: 0.3s;
+        }
+        input:focus { border-color: var(--warm-accent); background: #fff; }
+        
+        button {
+            padding: 0 35px; background: var(--warm-accent); color: #fff; border: none; border-radius: 25px;
+            font-weight: bold; font-size: 16px; cursor: pointer; font-family: inherit;
+            box-shadow: 0 4px 0 #ffa726; transition: 0.1s;
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 6px 0 #ffa726; }
+        button:active { transform: translateY(2px); box-shadow: 0 2px 0 #ffa726; }
+        button:disabled { background: #e0e0e0; box-shadow: none; color: #bdbdbd; cursor: not-allowed; transform: none;}
+
+    </style>
+</head>
+<body>
+
+<div id="app-container">
+    <div class="header">
+        <h1>☕ 心灵栖息地</h1>
+        <p>请轻点头像，邀请 1-5 位专家加入你的支持团队</p>
+        <a href="index.html" class="home-link">⌂ 首页</a>
+    </div>
+
+    <div id="selection-area">
+        <div class="agent-option" onclick="toggleAgent('freud')">
+            <div class="avatar-img" style="background-image: url('https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Freud&backgroundColor=e74c3c')"></div>
+            <div class="agent-label">弗洛伊德</div>
+        </div>
+        <div class="agent-option" onclick="toggleAgent('jung')">
+            <div class="avatar-img" style="background-image: url('https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Jung&backgroundColor=9b59b6')"></div>
+            <div class="agent-label">荣格</div>
+        </div>
+        <div class="agent-option" onclick="toggleAgent('adler')">
+            <div class="avatar-img" style="background-image: url('https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Adler&backgroundColor=f39c12')"></div>
+            <div class="agent-label">阿德勒</div>
+        </div>
+        <div class="agent-option" onclick="toggleAgent('contemporary')">
+            <div class="avatar-img" style="background-image: url('https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Relational&backgroundColor=20c997')"></div>
+            <div class="agent-label">当代动力</div>
+        </div>
+        <div class="agent-option" onclick="toggleAgent('narrative')">
+            <div class="avatar-img" style="background-image: url('https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Narrative&backgroundColor=3498db')"></div>
+            <div class="agent-label">叙事治疗</div>
+        </div>
+    </div>
+
+    <div id="chat-stream">
+        <div style="text-align:center; color:#bcaaa4; margin-top:50px; font-style:italic;">
+            (这里很安静，慢慢说，我们都在听...)
+        </div>
+    </div>
+
+    <div class="input-area">
+        <input type="text" id="user-input" placeholder="最近有什么心事吗？" onkeypress="handleKeyPress(event)">
+        <button id="send-btn" onclick="startCooperation()">倾诉</button>
+    </div>
+</div>
+
+<script>
+    // ⚠️⚠️⚠️ 再次提醒：这里需要填入真实的 Bot ID ⚠️⚠️⚠️
+    // 你之前只改了 debate.html，这个文件也得改！
+    const agentsConfig = {
+        'freud': { name: '弗洛伊德爷爷', botId: '73xxxx...', avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Freud&backgroundColor=e74c3c' },
+        'jung': { name: '荣格先生', botId: '73xxxx...', avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Jung&backgroundColor=9b59b6' },
+        'adler': { name: '阿德勒教授', botId: '73xxxx...', avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Adler&backgroundColor=f39c12' },
+        'contemporary': { name: '温暖的咨询师', botId: '73xxxx...', avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Relational&backgroundColor=20c997' },
+        'narrative': { name: '故事疗愈师', botId: '73xxxx...', avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Narrative&backgroundColor=3498db' }
+    };
+
+    // 存储用户选了谁
+    let selectedAgentIds = []; 
+
+    // 选人逻辑
+    function toggleAgent(agentId) {
+        const el = document.querySelector(`.agent-option[onclick="toggleAgent('${agentId}')"]`);
+        
+        if (selectedAgentIds.includes(agentId)) {
+            selectedAgentIds = selectedAgentIds.filter(id => id !== agentId);
+            el.classList.remove('selected');
+        } else {
+            if (selectedAgentIds.length >= 5) {
+                alert("最多选择 5 位哦");
+                return;
+            }
+            selectedAgentIds.push(agentId);
+            el.classList.add('selected');
+        }
+    }
+
+    function handleKeyPress(event) { if (event.key === 'Enter') startCooperation(); }
+
+    // --- 核心：串行接力逻辑 ---
+    async function startCooperation() {
+        const input = document.getElementById('user-input');
+        const query = input.value.trim();
+        if (!query) return;
+        if (selectedAgentIds.length === 0) {
+            alert("请先点击头像选择至少一位专家哦~");
+            return;
+        }
+
+        input.value = '';
+        document.getElementById('send-btn').disabled = true;
+        document.getElementById('chat-stream').innerHTML = ''; 
+        
+        appendMessage('user', '我', null, query);
+
+        let previousResponse = "";
+
+        // 循环调用 (一个接一个)
+        for (let i = 0; i < selectedAgentIds.length; i++) {
+            const agentKey = selectedAgentIds[i];
+            const agent = agentsConfig[agentKey];
+            
+            // 构造指令：接力模式
+            let promptForThisTurn = "";
+            if (i === 0) {
+                promptForThisTurn = `【指令：现在是温馨合作咨询模式。请用最温暖、治愈的口吻直接回应用户。】\n用户说：${query}`;
+            } else {
+                promptForThisTurn = `【指令：接力会诊。上一位专家已经说了：${previousResponse}。请你表示部分认同，并从你的流派角度补充。语气要和谐。】\n\n用户说：${query}`;
+            }
+
+            const bubbleId = appendMessage('agent', agent.name, agent.avatar, '<i style="color:#aaa">正在思考...</i>');
+
+            // 调用真实后端
+            let fullResponse = "";
+            await simulateCozeAPIStream(agent.botId, promptForThisTurn, (chunk) => {
+                const bubbleEl = document.getElementById(bubbleId);
+                if (bubbleEl.innerHTML.includes('正在思考')) bubbleEl.innerHTML = '';
+                fullResponse += chunk;
+                // 🟢 Markdown 实时渲染
+                bubbleEl.innerHTML = marked.parse(fullResponse);
+                
+                document.getElementById('chat-stream').scrollTo({ top: document.getElementById('chat-stream').scrollHeight, behavior: 'smooth' });
+            });
+
+            previousResponse = fullResponse;
+        }
+
+        document.getElementById('send-btn').disabled = false;
+    }
+
+    function appendMessage(type, name, avatar, content) {
+        const stream = document.getElementById('chat-stream');
+        const id = 'msg-' + Date.now() + Math.random();
+        
+        let html = '';
+        if (type === 'user') {
+            html = `<div class="message-card user-message">${content}</div>`;
+        } else {
+            html = `<div class="message-card"><div class="expert-header"><img src="${avatar}"> <span class="expert-name">${name}</span></div><div id="${id}">${content}</div></div>`;
+        }
+        stream.insertAdjacentHTML('beforeend', html);
+        return id;
+    }
+
+    // --- 真实 API 调用 ---
+    function simulateCozeAPIStream(botId, fullPrompt, onChunkReceived) {
+        return new Promise(async (resolve) => {
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        query: fullPrompt,
+                        bot_id: botId,
+                        conversation_id: "collab_" + Date.now()
+                    })
+                });
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    const chunk = decoder.decode(value, { stream: true });
+                    const lines = chunk.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data:') && line.length > 5) {
+                            try {
+                                const data = JSON.parse(line.slice(5));
+                                if (data.event === 'conversation.message.delta' && data.message && data.message.content) {
+                                    onChunkReceived(data.message.content);
+                                }
+                            } catch(e) {}
+                        }
+                    }
+                }
+                resolve(); 
+            } catch (err) {
+                onChunkReceived(" [连接中断] ");
+                resolve();
+            }
+        });
+    }
+</script>
+</body>
+</html>
