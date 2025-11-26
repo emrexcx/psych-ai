@@ -1,69 +1,102 @@
-// ✅ 文件路径：api/chat.js
+// api/chat.js (终极硬编码版 - 专治各种不通)
 export const config = {
-  runtime: 'edge', // 必须开启 edge 模式
+  runtime: 'edge',
 };
 
 export default async function handler(req) {
-  // 1. 只允许 POST 请求
+  // 1. 允许跨域 (防止本地调试报错)
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      },
+    });
+  }
+
   if (req.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
 
   try {
-    // 2. 解析前端传来的数据
-    const { query, bot_id, conversation_id } = await req.json();
+    const { query, bot_id } = await req.json();
 
-    // 3. 检查环境变量
-    const COZE_API_TOKEN = process.env.COZE_API_TOKEN;
-    if (!COZE_API_TOKEN) {
-      return new Response(JSON.stringify({ error: 'Missing COZE_API_TOKEN' }), { status: 500 });
+    // 🔴🔴🔴 请在这里直接填入你的 API Key！不要留空！🔴🔴🔴
+    // 例如: const COZE_API_KEY = 'pat_123456789...';
+    const COZE_API_KEY = 'pat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'; 
+
+    // 检查一下是不是忘了填
+    if (COZE_API_KEY.includes('xxxx')) {
+        return new Response(JSON.stringify({ error: "请在 api/chat.js 代码里填入真实的 API Key！" }), { status: 500 });
     }
 
-    // 4. 向 Coze 发起请求 (注意是 .cn)
-    const cozeResponse = await fetch('https://api.coze.cn/v3/chat', {
+    const response = await fetch('https://api.coze.cn/v3/chat', {
       method: 'POST',
       headers: {
+        'Authorization': `Bearer ${COZE_API_KEY}`,
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${COZE_API_TOKEN}`
       },
       body: JSON.stringify({
         bot_id: bot_id,
-        user_id: "web_user_" + Math.random().toString(36).slice(2),
-        stream: true, 
+        user_id: "web_user",
+        stream: true,
         auto_save_history: true,
-        additional_messages: [
-          { role: "user", content: query, content_type: "text" }
-        ]
-      })
+        additional_messages: [{ role: "user", content: query, content_type: "text" }]
+      }),
     });
 
-    if (!cozeResponse.ok) {
-      const errText = await cozeResponse.text();
-      return new Response(JSON.stringify({ error: `Coze API Error: ${cozeResponse.status}`, details: errText }), { status: 500 });
+    if (!response.ok) {
+      const errText = await response.text();
+      return new Response(JSON.stringify({ error: "Coze API 报错", details: errText }), { status: response.status });
     }
 
-    // 5. 建立流式管道 (手动搬运数据，防止卡顿)
-    const { readable, writable } = new TransformStream();
-    const writer = writable.getWriter();
-    const reader = cozeResponse.body.getReader();
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
 
-    (async () => {
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          await writer.write(value);
+    const stream = new ReadableStream({
+      async start(controller) {
+        const reader = response.body.getReader();
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split('\n');
+
+            for (const line of lines) {
+              if (line.startsWith('data:')) {
+                try {
+                  const jsonStr = line.slice(5).trim();
+                  if (!jsonStr) continue;
+                  const data = JSON.parse(jsonStr);
+                  
+                  // 宽松过滤：只要是 delta 消息且有 content 就发
+                  if (data.event === 'conversation.message.delta' && data.message?.content) {
+                     const content = data.message.content;
+                     // 过滤卡片代码
+                     if (content.includes('card_type')) continue;
+
+                     const msg = JSON.stringify({
+                         event: 'conversation.message.delta',
+                         message: { content: content }
+                     });
+                     controller.enqueue(encoder.encode(`data: ${msg}\n\n`));
+                  }
+                } catch (e) {}
+              }
+            }
+          }
+        } catch (err) {
+          console.error(err);
+        } finally {
+          controller.close();
         }
-      } catch (e) {
-        console.error('Stream error:', e);
-      } finally {
-        writer.close();
       }
-    })();
-
-    return new Response(readable, {
-      headers: { 'Content-Type': 'text/event-stream' }
     });
 
+    return new Response(stream, { headers: { 'Content-Type': 'text/event-stream' } });
+
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    return new Response(JSON.stringify({ error: "代码运行错误", details: error.message }), { status: 500 });
   }
 }
