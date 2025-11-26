@@ -1,0 +1,11 @@
+{
+  "name": "psych-ai-project",
+  "version": "1.0.0",
+  "description": "Psychology AI Multiverse",
+  "scripts": {
+    "start": "echo 'Running on Vercel'"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT"
+}

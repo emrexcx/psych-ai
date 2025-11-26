@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>心理学流派大乱斗 - 纵向巨塔版</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        /* --- 1. 全局变量 --- */
+        :root {
+            --neon-purple: #bd00ff;
+            --neon-blue: #0066ff;
+            --neon-cyan: #00eaff;
+            --core-light: #ffffff;
+            --bg-dark: #000205;
+        }
+
+        body {
+            font-family: 'Share Tech Mono', monospace, sans-serif;
+            background-color: var(--bg-dark);
+            color: #fff;
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            perspective: 1000px; 
+        }
+
+        /* --- 2. 纵深背景层 --- */
+        .cyber-floor {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 200vw; height: 200vh;
+            transform: translate(-50%, -50%) rotateX(60deg);
+            background-image: 
+                linear-gradient(rgba(0, 102, 255, 0.3) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 102, 255, 0.3) 1px, transparent 1px),
+                linear-gradient(rgba(189, 0, 255, 0.1) 2px, transparent 2px);
+            background-size: 50px 50px, 50px 50px, 250px 250px;
+            z-index: 0;
+            animation: gridMove 20s linear infinite;
+            mask-image: linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 80%);
+        }
+
+        @keyframes gridMove {
+            0% { background-position: 0 0; }
+            100% { background-position: 0 500px; }
+        }
+
+        /* 光源 */
+        .light-burst {
+            position: fixed; top: 20%; left: 50%; transform: translate(-50%, -50%);
+            width: 0; height: 0;
+            box-shadow: 0 0 100px 50px rgba(0, 102, 255, 0.5), 0 0 50px 20px rgba(0, 234, 255, 0.8), 0 0 0px 2px rgba(255, 255, 255, 0.9);
+            z-index: 1; pointer-events: none;
+        }
+        .light-burst::before, .light-burst::after {
+            content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: linear-gradient(90deg, transparent, #fff, transparent);
+        }
+        .light-burst::before { width: 80vw; height: 2px; opacity: 0.5; }
+        .light-burst::after { width: 2px; height: 80vh; opacity: 0.3; }
+
+        /* 粒子 */
+        .particles { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
+        .particle { position: absolute; border-radius: 50%; background: var(--neon-cyan); opacity: 0.6; filter: blur(2px); animation: floatUp 10s infinite linear; }
+        .p1 { width: 4px; height: 4px; left: 10%; bottom: -10px; animation-duration: 7s; }
+        .p2 { width: 8px; height: 8px; left: 20%; bottom: -20px; filter: blur(4px); animation-duration: 12s; opacity: 0.3; }
+        .p3 { width: 3px; height: 3px; left: 80%; bottom: -10px; animation-duration: 9s; }
+        .p4 { width: 6px; height: 6px; left: 70%; bottom: -30px; filter: blur(3px); animation-duration: 15s; background: var(--neon-purple); }
+        @keyframes floatUp { 0% { transform: translateY(0); opacity: 0; } 20% { opacity: 0.8; } 100% { transform: translateY(-120vh); opacity: 0; } }
+
+        /* --- 3. 主容器 --- */
+        #app-container {
+            position: relative; z-index: 10;
+            width: 90%; max-width: 850px; height: 90vh; /* 保持竖长比例 */
+            background: rgba(0, 5, 15, 0.75);
+            backdrop-filter: blur(10px);
+            display: flex; flex-direction: column;
+            border: 1px solid rgba(0, 234, 255, 0.3);
+            border-top: 1px solid rgba(0, 234, 255, 0.6);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            border-radius: 12px; overflow: hidden;
+        }
+
+        /* --- 头部 (带跳转按钮) --- */
+        .header {
+            padding: 20px; 
+            background: rgba(0,0,0,0.4);
+            border-bottom: 1px solid rgba(0, 234, 255, 0.2);
+            display: flex; justify-content: center; align-items: center;
+            position: relative; /* 为绝对定位按钮做参照 */
+        }
+        .header h1 {
+            margin: 0; font-size: 24px; letter-spacing: 3px; color: #fff;
+            text-shadow: 0 0 10px var(--neon-blue);
+        }
+        
+        /* 右上角跳转按钮样式 */
+        .switch-btn {
+            position: absolute; right: 20px;
+            text-decoration: none; color: var(--neon-cyan); font-size: 12px;
+            border: 1px solid var(--neon-cyan); padding: 6px 12px; border-radius: 4px;
+            background: rgba(0,0,0,0.5); transition: 0.3s;
+        }
+        .switch-btn:hover { background: var(--neon-cyan); color: #000; box-shadow: 0 0 10px var(--neon-cyan); }
+
+        /* --- 聊天区 --- */
+        #chat-arena {
+            flex: 1; overflow-y: auto; padding: 20px;
+            display: flex; flex-direction: column; gap: 20px;
+            scrollbar-width: thin; scrollbar-color: var(--neon-blue) rgba(0,0,0,0.5);
+        }
+        #chat-arena::-webkit-scrollbar { width: 6px; }
+        #chat-arena::-webkit-scrollbar-thumb { background: var(--neon-blue); border-radius: 3px; }
+
+        #placeholder-container {
+            text-align: center; margin-top: 100px;
+            color: #fff; text-shadow: 0 0 10px var(--neon-blue);
+        }
+
+        /* 预览区 */
+        #preview-btn {
+            margin-top: 20px; padding: 10px 20px; background: rgba(0,0,0,0.5);
+            border: 1px solid var(--neon-cyan); color: var(--neon-cyan);
+            cursor: pointer; transition: 0.3s;
+        }
+        #preview-btn:hover { background: var(--neon-cyan); color: #000; box-shadow: 0 0 20px var(--neon-cyan); }
+        #avatar-preview-area {
+            display: none; justify-content: center; gap: 15px; margin-top: 20px; padding: 15px;
+            background: rgba(0, 234, 255, 0.05); border: 1px dashed rgba(0, 234, 255, 0.3);
+        }
+
+        /* 消息样式 */
+        .message-group { display: flex; align-items: flex-start; }
+        .avatar {
+            width: 50px; height: 50px; border-radius: 50%; margin-right: 15px; flex-shrink: 0;
+            background-size: cover; background-color: #000;
+            border: 2px solid #fff; box-shadow: 0 0 15px var(--neon-blue);
+        }
+        .message-content { max-width: 85%; }
+        .agent-name { font-size: 12px; color: var(--neon-cyan); margin-bottom: 5px; }
+        .bubble {
+            padding: 15px; background: rgba(0, 10, 30, 0.8);
+            border: 1px solid var(--neon-blue); color: #e0f7ff;
+            border-radius: 0 15px 15px 15px; box-shadow: 0 0 10px rgba(0, 102, 255, 0.2);
+        }
+        
+        .message-group.user { flex-direction: row-reverse; }
+        .message-group.user .avatar { margin-right: 0; margin-left: 15px; border-color: var(--neon-purple); box-shadow: 0 0 15px var(--neon-purple); }
+        .message-group.user .bubble {
+            background: rgba(20, 0, 20, 0.8); border-color: var(--neon-purple);
+            border-radius: 15px 0 15px 15px;
+        }
+        .message-group.user .agent-name { text-align: right; color: var(--neon-purple); }
+
+        /* --- 底部输入栏 --- */
+        .input-area {
+            padding: 25px; background: rgba(0,0,0,0.8);
+            border-top: 1px solid rgba(0, 234, 255, 0.3);
+            display: flex; gap: 15px; position: relative;
+            box-shadow: 0 -10px 30px rgba(0, 102, 255, 0.1);
+        }
+        #user-input {
+            flex: 1; padding: 15px; background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(0, 234, 255, 0.3);
+            color: var(--neon-cyan); font-family: 'Share Tech Mono'; font-size: 16px;
+            outline: none; transition: 0.3s;
+        }
+        #user-input:focus { border-color: var(--neon-cyan); box-shadow: 0 0 15px rgba(0, 234, 255, 0.2); }
+
+        #send-btn {
+            padding: 0 30px;
+            background: linear-gradient(135deg, var(--neon-blue), var(--neon-purple));
+            border: none; color: #fff; font-weight: bold; font-size: 16px; cursor: pointer;
+            box-shadow: 0 0 20px rgba(0, 102, 255, 0.5); transition: 0.3s;
+        }
+        #send-btn:hover { transform: scale(1.05); box-shadow: 0 0 40px rgba(189, 0, 255, 0.8); }
+
+    </style>
+</head>
+<body>
+
+    <div class="cyber-floor"></div>
+    <div class="light-burst"></div>
+    <div class="particles">
+        <div class="particle p1"></div><div class="particle p2"></div><div class="particle p3"></div><div class="particle p4"></div>
+    </div>
+
+    <div id="app-container">
+        <div class="header">
+            <h1>NEON DEBATE // 核心中枢</h1>
+            <a href="experience.html" class="switch-btn">➜ 深度会诊</a>
+        </div>
+
+        <div id="chat-arena">
+            <div id="placeholder-container">
+                <div style="font-size: 18px; letter-spacing: 2px;">WAITING FOR SIGNAL...</div>
+                <div style="font-size: 12px; margin-top: 5px; opacity: 0.7;">系统等待输入</div>
+                <button id="preview-btn" onclick="togglePreview()">[ 扫描专家 ]</button>
+                <div id="avatar-preview-area"></div>
+            </div>
+        </div>
+
+        <div class="input-area">
+            <input type="text" id="user-input" placeholder="输入指令..." onkeypress="handleKeyPress(event)">
+            <button id="send-btn" onclick="startBrawl()">发送</button>
+        </div>
+    </div>
+
+    <script>
+        // ⚠️⚠️⚠️ 务必替换为真实 Bot ID ⚠️⚠️⚠️
+        const FREUD_AVATAR = 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Freud&backgroundColor=2a0a2a';
+        const JUNG_AVATAR = 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Jung&backgroundColor=0a0a2a';
+        const ADLER_AVATAR = 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Adler&backgroundColor=2a1a0a';
+        const CONTEMPORARY_AVATAR = 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Relational&backgroundColor=0a2a1a';
+        const NARRATIVE_AVATAR = 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Narrative&backgroundColor=0a1a2a';
+
+// ⚠️ 引用本地 images 文件夹里的图片
+    const agents = [
+        { id: 'freud', name: '弗洛伊德', botId: '7576937790106402857', avatar: 'images/freud.png' },
+        { id: 'jung', name: '荣格', botId: '7576939753841508378', avatar: 'images/jung.png' },
+        { id: 'adler', name: '阿德勒', botId: '7576940585882550326', avatar: 'images/adler.png' },
+        { id: 'contemporary', name: '当代动力', botId: '7576941130223255578', avatar: 'images/contemp.png' },
+        { id: 'narrative', name: '叙事治疗', botId: '7576941141384544262', avatar: 'images/narrative.png' }
+    ];
+
+        const chatArena = document.getElementById('chat-arena');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+        const placeholderContainer = document.getElementById('placeholder-container');
+        const previewArea = document.getElementById('avatar-preview-area');
+        const previewBtn = document.getElementById('preview-btn');
+
+        function togglePreview() {
+            if (previewArea.style.display === 'flex') {
+                previewArea.style.display = 'none';
+                previewBtn.innerHTML = '[ 扫描专家 ]';
+            } else {
+                if (previewArea.innerHTML.trim() === '') {
+                    agents.forEach(agent => {
+                       const item = document.createElement('div');
+                       item.style.display = 'flex'; item.style.flexDirection = 'column'; item.style.alignItems = 'center';
+                       item.innerHTML = `<div class="avatar" style="background-image: url('${agent.avatar}'); width: 50px; height: 50px;"></div><div style="font-size:10px; color:#00eaff; margin-top:5px;">${agent.name}</div>`;
+                       previewArea.appendChild(item);
+                    });
+                }
+                previewArea.style.display = 'flex';
+                previewBtn.innerHTML = '[ 关闭扫描 ]';
+            }
+        }
+
+        function handleKeyPress(event) { if (event.key === 'Enter') startBrawl(); }
+
+        async function startBrawl() {
+            const query = userInput.value.trim();
+            if (!query) return;
+            userInput.value = ''; sendBtn.disabled = true; 
+            if(placeholderContainer) placeholderContainer.style.display = 'none';
+            
+            addUserMessage(query); 
+
+            const agentUIElements = {};
+            agents.forEach(agent => { agentUIElements[agent.id] = addAgentMessageBubble(agent); });
+
+            const debatePrompt = `【指令：现在是激烈的辩论模式。请用简短（50字内）、犀利、带有攻击性的口吻回答。必须反驳其他流派的潜在观点。】\n\n用户问题：${query}`;
+
+            // 🟢 真实后端 API 调用
+            const tasks = agents.map(agent => simulateCozeAPIStream(agent.id, agent.name, debatePrompt, (chunk) => {
+                updateBubbleContent(agentUIElements[agent.id], chunk);
+            }));
+            await Promise.all(tasks);
+            sendBtn.disabled = false; scrollToBottom();
+        }
+
+        function addUserMessage(text) {
+            const html = `<div class="message-group user"><div class="avatar" style="background-image: url('https://placehold.co/200x200/000000/ff0055.png?text=USER'); border-color: #bd00ff; box-shadow: 0 0 10px #bd00ff;"></div><div class="message-content"><div class="agent-name" style="text-align:right; color:#bd00ff;">OPERATOR</div><div class="bubble">${text}</div></div></div>`;
+            chatArena.insertAdjacentHTML('beforeend', html); scrollToBottom();
+        }
+
+        function addAgentMessageBubble(agent) {
+            const bubbleId = `bubble-${agent.id}-${Date.now()}`;
+            const html = `<div class="message-group"><div class="avatar" style="background-image: url('${agent.avatar}')"></div><div class="message-content"><div class="agent-name">${agent.name}</div><div class="bubble" id="${bubbleId}"><span style="animation:blink 1s infinite">_</span></div></div></div>`;
+            chatArena.insertAdjacentHTML('beforeend', html); scrollToBottom();
+            return document.getElementById(bubbleId);
+        }
+
+        function updateBubbleContent(bubbleElement, newText) {
+            if (bubbleElement.innerText === '_') bubbleElement.innerHTML = '';
+            bubbleElement.innerHTML += newText; scrollToBottom();
+        }
+        function scrollToBottom() { chatArena.scrollTop = chatArena.scrollHeight; }
+        
+        // --- 真实 API 调用逻辑 ---
+        async function simulateCozeAPIStream(agentId, agentName, fullPrompt, onChunkReceived) {
+            const agent = agents.find(a => a.id === agentId);
+            if(!agent || !agent.botId) return;
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        query: fullPrompt,
+                        bot_id: agent.botId,
+                        conversation_id: "debate_" + Date.now()
+                    })
+                });
+                
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop();
+
+                    for (const line of lines) {
+                        if (line.startsWith('data:') && line.length > 5) {
+                            try {
+                                const data = JSON.parse(line.slice(5));
+                                if (data.event === 'conversation.message.delta' && data.message && data.message.content) {
+                                    onChunkReceived(data.message.content);
+                                }
+                            } catch (e) {}
+                        }
+                    }
+                }
+            } catch (err) {
+                onChunkReceived(" [连接错误] ");
+            }
+        }
+    </script>
+</body>
+</html>
