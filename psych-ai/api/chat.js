@@ -1,73 +1,74 @@
-export const config = {
-  runtime: 'edge',
-};
+// ✅ 宽容模式：只要不是 JSON 代码，什么类型都显示
+        async function simulateCozeAPIStream(agentId, prompt, onChunk) {
+            const agent = agents.find(a => a.id === agentId);
+            console.log(`[${agent.name}] 正在连接...`);
 
-export default async function handler(req) {
-  if (req.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        query: prompt,
+                        bot_id: agent.botId,
+                        conversation_id: "debate_" + Date.now()
+                    })
+                });
 
-  try {
-    const { query, bot_id } = await req.json();
-    const COZE_API_KEY = process.env.COZE_API_KEY;
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
 
-    // 1. 发起请求
-    const response = await fetch('https://api.coze.cn/v3/chat', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${COZE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        bot_id: bot_id,
-        user_id: "web_user_" + Date.now(),
-        stream: true,
-        auto_save_history: true,
-        additional_messages: [{ role: "user", content: query, content_type: "text" }]
-      }),
-    });
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop();
 
-    // 2. 建立直通管道
-    const { readable, writable } = new TransformStream();
-    const writer = writable.getWriter();
-    const reader = response.body.getReader();
-    const encoder = new TextEncoder();
-    const decoder = new TextDecoder();
+                    for (const line of lines) {
+                        if (line.startsWith('data:') && line.length > 5) {
+                            try {
+                                const rawJson = line.slice(5).trim();
+                                if (rawJson === '[DONE]') continue;
 
-    // 3. 边读边发 (不做任何 JSON 解析，直接转发)
-    (async () => {
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n');
+                                const data = JSON.parse(rawJson);
+                                
+                                // 🔍 调试：在控制台打印每一条消息的类型，看看它到底是个啥
+                                // if (data.message && data.message.type) {
+                                //    console.log("收到类型:", data.message.type, "内容:", data.message.content);
+                                // }
 
-          for (const line of lines) {
-            // 只要行里包含 "content"，我们就尝试提取
-            if (line.includes('"content"')) {
-               // 简单粗暴提取 content 内容
-               // 这是一个非常宽松的正则，只要是有 content":"... 这种结构的都抓
-               const match = line.match(/"content"\s*:\s*"((?:[^"\\]|\\.)*)"/);
-               if (match && match[1]) {
-                   let content = match[1];
-                   // 手动还原转义字符 (比如 \n 变回换行)
-                   content = JSON.parse(`"${content}"`); 
-                   
-                   // 构造 SSE 消息发给前端
-                   const msg = JSON.stringify({
-                       event: 'conversation.message.delta',
-                       message: { content: content }
-                   });
-                   await writer.write(encoder.encode(`data: ${msg}\n\n`));
-               }
+                                // 🟢 修改逻辑：
+                                // 1. 只要有 content (内容)
+                                // 2. 且 event 是 message.delta (增量消息)
+                                // 3. 就不管 type 是什么了（删掉了 type==='answer' 的限制）
+                                if (
+                                    data.event === 'conversation.message.delta' && 
+                                    data.message && 
+                                    data.message.content 
+                                ) {
+                                    const content = data.message.content;
+                                    
+                                    // 🛑 唯一的过滤器：拦截 JSON 格式的“机器日志”
+                                    // 如果这句话是以 "{" 开头，且包含 "msg_type"，那它肯定是后台日志，扔掉！
+                                    // 否则，统统认为是人话，显示出来！
+                                    if (content.trim().startsWith('{') && content.includes('"msg_type"')) {
+                                        continue; 
+                                    }
+
+                                    // 显示上屏
+                                    onChunk(content);
+                                }
+                            } catch (e) {}
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error("Stream Error:", err);
+                onChunk(" **[连接中断]** ");
             }
-          }
         }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        await writer.close();
-      }
     })();
 
     return new Response(readable, {
@@ -79,4 +80,5 @@ export default async function handler(req) {
   }
 }
 }
+
 
