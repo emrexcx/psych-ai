@@ -7,7 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
-        /* --- 1. 全局变量 --- */
+        /* --- 1. 全局变量 (霓虹配色) --- */
         :root {
             --neon-purple: #bd00ff;
             --neon-blue: #0066ff;
@@ -81,6 +81,7 @@
             text-shadow: 0 0 10px var(--neon-blue);
         }
         
+        /* 按钮样式 */
         .nav-btn {
             position: absolute; text-decoration: none; font-size: 12px;
             padding: 6px 12px; border-radius: 4px; background: rgba(0,0,0,0.5); transition: 0.3s;
@@ -100,6 +101,7 @@
         #chat-arena::-webkit-scrollbar { width: 6px; }
         #chat-arena::-webkit-scrollbar-thumb { background: var(--neon-blue); border-radius: 3px; }
 
+        /* 占位符 & 扫描按钮 */
         #placeholder-container {
             text-align: center; margin-top: 100px;
             color: #fff; text-shadow: 0 0 10px var(--neon-blue);
@@ -108,6 +110,7 @@
             margin-top: 20px; padding: 10px 20px; background: rgba(0,0,0,0.5);
             border: 1px solid var(--neon-cyan); color: var(--neon-cyan); cursor: pointer; transition: 0.3s;
         }
+        #preview-btn:hover { background: var(--neon-cyan); color: #000; box-shadow: 0 0 20px var(--neon-cyan); }
         #avatar-preview-area {
             display: none; justify-content: center; gap: 15px; margin-top: 20px; padding: 15px;
             background: rgba(0, 234, 255, 0.05); border: 1px dashed rgba(0, 234, 255, 0.3);
@@ -118,7 +121,7 @@
         .avatar {
             width: 50px; height: 50px; border-radius: 50%; margin-right: 15px; flex-shrink: 0;
             background-size: cover; border: 2px solid #fff; box-shadow: 0 0 15px var(--neon-blue);
-            background-color: #000; /* 防止图片加载慢时透明 */
+            background-color: #000;
         }
         .message-content { max-width: 85%; }
         .agent-name { font-size: 12px; color: var(--neon-cyan); margin-bottom: 5px; }
@@ -198,7 +201,8 @@
     </div>
 
     <script>
-        // ✅ ⚠️⚠️⚠️ 替换图片路径 + 请填入你的 Bot ID ⚠️⚠️⚠️
+        // ✅ 已更新为你上传的新图片路径 (xxx2.png)
+        // ⚠️ 请务必确认 Bot ID 正确！
         const agents = [
             { id: 'freud', name: '弗洛伊德', botId: '7576937790106402857', avatar: 'images/freud.png' },
             { id: 'jung', name: '荣格', botId: '7576939753841508378', avatar: 'images/jung.png' },
@@ -328,12 +332,9 @@
                     }
                 }
             } catch (err) {
-                console.error("Stream Error:", err);
-                onChunk(" **[连接中断]** ");
+                onChunk(" [网络中断] ");
             }
         }
     </script>
 </body>
 </html>
-</html>
-
