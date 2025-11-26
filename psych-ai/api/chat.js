@@ -1,4 +1,3 @@
-// api/chat.js (万能兼容版)
 export const config = {
   runtime: 'edge',
 };
@@ -7,10 +6,9 @@ export default async function handler(req) {
   if (req.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
 
   try {
-    const { query, bot_id, conversation_id } = await req.json();
+    const { query, bot_id } = await req.json();
     const COZE_API_KEY = process.env.COZE_API_KEY;
 
-    // 1. 发送请求
     const response = await fetch('https://api.coze.cn/v3/chat', {
       method: 'POST',
       headers: {
@@ -26,11 +24,6 @@ export default async function handler(req) {
       }),
     });
 
-    if (!response.ok) {
-      return new Response(JSON.stringify({ error: "Coze API Error" }), { status: response.status });
-    }
-
-    // 2. 宽容流式处理
     const encoder = new TextEncoder();
     const decoder = new TextDecoder();
 
@@ -47,22 +40,24 @@ export default async function handler(req) {
             const lines = chunk.split('\n');
 
             for (const line of lines) {
-              // 🟢 只要行里有 "content"，就尝试提取，不检查 event 类型
-              if (line.includes('"content"')) {
+              if (line.startsWith('data:')) {
                 try {
-                  // 简单粗暴提取 content 内容
-                  const jsonStr = line.substring(line.indexOf('{'));
+                  const jsonStr = line.slice(5).trim();
+                  if (!jsonStr) continue;
                   const data = JSON.parse(jsonStr);
-                  
-                  // 只要有内容就发
-                  if (data.content || data.message?.content) {
-                     const text = data.content || data.message.content;
-                     // 过滤掉纯代码
-                     if (text.includes('card_type')) continue;
+
+                  // 🛑 核心修复：严格筛选事件类型 🛑
+                  // 只允许 'delta' (增量更新) 通过
+                  // 坚决屏蔽 'completed' (这是导致重复的元凶！)
+                  if (data.event === 'conversation.message.delta' && data.type === 'answer') {
+                     const content = data.content;
+                     
+                     // 过滤掉可能的空内容或卡片代码
+                     if (!content || content.includes('card_type')) continue;
 
                      const msg = JSON.stringify({
                          event: 'conversation.message.delta',
-                         message: { content: text }
+                         message: { content: content }
                      });
                      controller.enqueue(encoder.encode(`data: ${msg}\n\n`));
                   }
