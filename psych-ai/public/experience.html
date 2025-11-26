@@ -7,155 +7,42 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;500;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
-        /* --- 全局变量 --- */
-        :root {
-            --med-blue: #007bff;
-            --med-bg: #f0f4f8;
-            --card-bg: #ffffff;
-            --text-main: #2c3e50;
-            --shadow: 0 4px 20px rgba(0, 123, 255, 0.08);
-        }
-
-        body {
-            margin: 0; height: 100vh;
-            font-family: 'Inter', sans-serif;
-            background-color: var(--med-bg);
-            color: var(--text-main);
-            display: flex; flex-direction: column;
-        }
-
-        /* --- 头部 --- */
-        .header {
-            padding: 15px 30px; background: #fff;
-            border-bottom: 1px solid #e1e8ed;
-            display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.03);
-        }
-        .header h1 { 
-            margin: 0; font-size: 18px; color: var(--med-blue); 
-            font-weight: 700; text-transform: uppercase; letter-spacing: 1px; 
-        }
-        
-        .header-right { display: flex; align-items: center; gap: 15px; }
-        
-        .status-badge {
-            font-size: 12px; background: #e3f2fd; color: var(--med-blue);
-            padding: 5px 12px; border-radius: 20px; font-weight: 600;
-        }
-
-        /* 跳转按钮样式 */
-        .back-link {
-            text-decoration: none; color: #fff; background-color: #343a40;
-            padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500;
-            transition: 0.2s; display: flex; align-items: center; gap: 5px;
-        }
-        .back-link:hover { background-color: #000; transform: translateY(-1px); }
-
-        /* --- 核心：卡片容器 --- */
-        #panels-container {
-            flex: 1; padding: 25px;
-            display: flex; gap: 20px;
-            overflow-x: auto; 
-            align-items: stretch; 
-            padding-bottom: 10px;
-        }
-        #panels-container::-webkit-scrollbar { height: 8px; }
-        #panels-container::-webkit-scrollbar-thumb { background: #cfd8dc; border-radius: 4px; }
-
-        /* --- 专家卡片 --- */
-        .expert-card {
-            flex: 1; min-width: 300px; 
-            background: var(--card-bg);
-            border-radius: 12px; border: 1px solid #eef2f5;
-            box-shadow: var(--shadow);
-            display: flex; flex-direction: column;
-            transition: transform 0.2s;
-            position: relative; overflow: hidden;
-        }
-        .expert-card:hover { transform: translateY(-5px); box-shadow: 0 12px 30px rgba(0, 123, 255, 0.15); }
-
-        /* 卡片头部 */
-        .card-header {
-            padding: 20px; border-bottom: 1px solid #f5f7fa;
-            display: flex; align-items: center; background: #fff;
-        }
-        .avatar {
-            width: 48px; height: 48px; border-radius: 10px; margin-right: 12px;
-            background-size: cover; border: 1px solid #eee;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        }
-        .expert-info h3 { margin: 0; font-size: 15px; color: #333; font-weight: 700; }
-        .expert-info span { font-size: 12px; color: #8898aa; font-weight: 500; }
-
-        /* 顶部颜色条区分 */
-        .card-freud { border-top: 4px solid #e74c3c; }     
-        .card-jung { border-top: 4px solid #9b59b6; }      
-        .card-adler { border-top: 4px solid #f39c12; }     
-        .card-contemp { border-top: 4px solid #20c997; }   
-        .card-narrative { border-top: 4px solid #3498db; } 
-
-        /* --- 诊断输出区 --- */
-        .diagnosis-area {
-            flex: 1; padding: 25px;
-            font-size: 14px; line-height: 1.8; color: #4a5568;
-            overflow-y: auto; 
-            background-color: #fff;
-        }
-        /* Markdown 样式 */
+        :root { --med-blue: #007bff; --med-bg: #f0f4f8; --card-bg: #ffffff; --text-main: #2c3e50; --shadow: 0 4px 20px rgba(0, 123, 255, 0.08); }
+        body { margin: 0; height: 100vh; font-family: 'Inter', sans-serif; background-color: var(--med-bg); color: var(--text-main); display: flex; flex-direction: column; }
+        .header { padding: 15px 30px; background: #fff; border-bottom: 1px solid #e1e8ed; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.03); }
+        .header h1 { margin: 0; font-size: 18px; color: var(--med-blue); font-weight: 700; letter-spacing: 1px; }
+        .back-link { text-decoration: none; color: #fff; background-color: #343a40; padding: 8px 16px; border-radius: 6px; font-size: 13px; transition: 0.2s; }
+        .back-link:hover { background-color: #000; }
+        #panels-container { flex: 1; padding: 25px; display: flex; gap: 20px; overflow-x: auto; padding-bottom: 10px; }
+        .expert-card { flex: 1; min-width: 300px; background: var(--card-bg); border-radius: 12px; border: 1px solid #eef2f5; box-shadow: var(--shadow); display: flex; flex-direction: column; overflow: hidden; }
+        .card-header { padding: 20px; border-bottom: 1px solid #f5f7fa; display: flex; align-items: center; background: #fff; }
+        .avatar { width: 48px; height: 48px; border-radius: 10px; margin-right: 12px; background-size: cover; border: 1px solid #eee; }
+        .expert-info h3 { margin: 0; font-size: 15px; font-weight: 700; } .expert-info span { font-size: 12px; color: #8898aa; }
+        .card-freud { border-top: 4px solid #e74c3c; } .card-jung { border-top: 4px solid #9b59b6; } .card-adler { border-top: 4px solid #f39c12; } .card-contemp { border-top: 4px solid #20c997; } .card-narrative { border-top: 4px solid #3498db; }
+        .diagnosis-area { flex: 1; padding: 25px; font-size: 14px; line-height: 1.8; color: #4a5568; overflow-y: auto; background-color: #fff; }
         .diagnosis-area p { margin-bottom: 10px; }
-        .diagnosis-area strong { color: #000; font-weight: 700; }
-        .diagnosis-area ul { padding-left: 20px; margin-bottom: 10px; }
-
-        .diagnosis-area::-webkit-scrollbar { width: 5px; }
-        .diagnosis-area::-webkit-scrollbar-thumb { background: #edf2f7; border-radius: 3px; }
-
-        /* --- 底部输入 --- */
-        .input-wrapper {
-            background: #fff; padding: 20px;
-            border-top: 1px solid #e1e8ed;
-            display: flex; justify-content: center;
-            box-shadow: 0 -4px 20px rgba(0,0,0,0.02);
-        }
+        .input-wrapper { background: #fff; padding: 20px; border-top: 1px solid #e1e8ed; display: flex; justify-content: center; }
         .input-group { width: 100%; max-width: 900px; display: flex; gap: 15px; }
-        
-        input {
-            flex: 1; padding: 14px 20px; border: 2px solid #eef2f5; border-radius: 8px;
-            font-size: 16px; transition: 0.3s; outline: none;
-        }
-        input:focus { border-color: var(--med-blue); background: #fbfdff; }
-        
-        button {
-            padding: 0 35px; background: var(--med-blue); color: #fff;
-            border: none; border-radius: 8px; font-weight: 600; cursor: pointer;
-            transition: 0.2s; box-shadow: 0 4px 10px rgba(0, 123, 255, 0.3);
-        }
-        button:hover { background: #0056b3; transform: translateY(-2px); }
-        button:disabled { background: #ccc; transform: none; box-shadow: none; cursor: not-allowed; }
-
+        input { flex: 1; padding: 14px 20px; border: 2px solid #eef2f5; border-radius: 8px; font-size: 16px; outline: none; }
+        input:focus { border-color: var(--med-blue); }
+        button { padding: 0 35px; background: var(--med-blue); color: #fff; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
     </style>
 </head>
 <body>
-
     <div class="header">
         <h1>CLINICAL BOARD // 深度会诊室</h1>
-        <div class="header-right">
-            <span class="status-badge">5 Specialists Online</span>
-            <a href="debate.html" class="back-link">⚡ 返回乱斗模式</a>
-        </div>
+        <a href="debate.html" class="back-link">⚡ 返回乱斗模式</a>
     </div>
-
     <div id="panels-container"></div>
-
     <div class="input-wrapper">
         <div class="input-group">
-            <input type="text" id="user-input" placeholder="请详细描述您的困扰，获取多维度的独立诊断..." onkeypress="handleKeyPress(event)">
+            <input type="text" id="user-input" placeholder="请详细描述您的困扰..." onkeypress="handleKeyPress(event)">
             <button id="send-btn" onclick="startConsultation()">开始会诊</button>
         </div>
     </div>
 
 <script>
-    // ✅ 已更新为你的新头像 (images/xxx2.png)
-    // ✅ 已保留你提供的 Bot ID
+    // ⚠️⚠️⚠️ 请在此处填入你的真实 Bot ID ⚠️⚠️⚠️
     const agents = [
         { id: 'freud', name: 'S. Freud', title: '精神分析', theme: 'card-freud', botId: '7576937790106402857', avatar: 'images/freud2.png' },
         { id: 'jung', name: 'C.G. Jung', title: '分析心理学', theme: 'card-jung', botId: '7576939753841508378', avatar: 'images/jung2.png' },
@@ -171,24 +58,10 @@
         container.innerHTML = '';
         agents.forEach(agent => {
             agentResponses[agent.id] = ""; 
-            const html = `
-                <div class="expert-card ${agent.theme}">
-                    <div class="card-header">
-                        <div class="avatar" style="background-image: url('${agent.avatar}')"></div>
-                        <div class="expert-info">
-                            <h3>${agent.name}</h3>
-                            <span>${agent.title}</span>
-                        </div>
-                    </div>
-                    <div class="diagnosis-area" id="output-${agent.id}">
-                        <span style="color:#ccc; font-style: italic;">等待病历输入...</span>
-                    </div>
-                </div>
-            `;
+            const html = `<div class="expert-card ${agent.theme}"><div class="card-header"><div class="avatar" style="background-image: url('${agent.avatar}')"></div><div class="expert-info"><h3>${agent.name}</h3><span>${agent.title}</span></div></div><div class="diagnosis-area" id="output-${agent.id}"><span style="color:#ccc; font-style: italic;">等待病历输入...</span></div></div>`;
             container.insertAdjacentHTML('beforeend', html);
         });
     }
-    
     initUI();
 
     function handleKeyPress(event) { if (event.key === 'Enter') startConsultation(); }
@@ -221,21 +94,15 @@
         btn.disabled = false; btn.innerText = '开始会诊';
     }
 
-    // ✅ 核心：去重 + 去日志 + 去追问的 API 调用函数
+    // ✅ 核心 API 函数：精准去重 + 日志过滤 + 去追问
     async function simulateCozeAPIStream(botId, fullPrompt, callback) {
         if(!botId) { callback("[错误: 未配置 Bot ID]"); return; }
-
         try {
             const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    query: fullPrompt,
-                    bot_id: botId,
-                    conversation_id: "exp_" + Date.now()
-                })
+                body: JSON.stringify({ query: fullPrompt, bot_id: botId, conversation_id: "exp_" + Date.now() })
             });
-
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
 
@@ -252,16 +119,15 @@
                             if (rawJson === '[DONE]') continue;
                             const data = JSON.parse(rawJson);
                             
-                            // ✂️ 1. 只允许 "正在输入" (delta) 的内容，防止重复
+                            // ✂️ 1. 只允许 delta (增量) 消息，拒绝 completed (全文重复)
                             if (data.event !== 'conversation.message.delta') continue;
 
                             if (data.message && data.message.content) {
-                                // ✂️ 2. 过滤掉 "追问" (follow_up)
+                                // ✂️ 2. 拒绝 follow_up (追问)
                                 if (data.message.type === 'follow_up') continue;
 
                                 const content = data.message.content;
-                                
-                                // 🛡️ 3. 过滤掉代码日志
+                                // 🛡️ 拒绝代码日志
                                 if (!content.trim().startsWith('{')) {
                                     callback(content);
                                 }
@@ -270,9 +136,7 @@
                     }
                 }
             }
-        } catch (err) {
-            callback("[网络连接错误]");
-        }
+        } catch (err) { callback("[网络连接错误]"); }
     }
 </script>
 </body>
