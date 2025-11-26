@@ -1,33 +1,15 @@
-// api/chat.js (终极硬编码版 - 专治各种不通)
 export const config = {
   runtime: 'edge',
 };
 
 export default async function handler(req) {
-  // 1. 允许跨域 (防止本地调试报错)
-  if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-      },
-    });
-  }
-
   if (req.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
 
   try {
     const { query, bot_id } = await req.json();
 
-    // 🔴🔴🔴 请在这里直接填入你的 API Key！不要留空！🔴🔴🔴
-    // 例如: const COZE_API_KEY = 'pat_123456789...';
-    const COZE_API_KEY = 'pat_Vswkv5cP4s9Ad7gpoSlvORGwZTfI8zagWZomC8STFUN84ae4mMONBU6n0QtmAA3B'; 
-
-    // 检查一下是不是忘了填
-    if (COZE_API_KEY.includes('xxxx')) {
-        return new Response(JSON.stringify({ error: "请在 api/chat.js 代码里填入真实的 API Key！" }), { status: 500 });
-    }
+    // 🔴🔴🔴 请再次填入你的真实 Key (保留引号) 🔴🔴🔴
+    const COZE_API_KEY = 'pat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
 
     const response = await fetch('https://api.coze.cn/v3/chat', {
       method: 'POST',
@@ -45,8 +27,8 @@ export default async function handler(req) {
     });
 
     if (!response.ok) {
-      const errText = await response.text();
-      return new Response(JSON.stringify({ error: "Coze API 报错", details: errText }), { status: response.status });
+        const errText = await response.text();
+        return new Response(JSON.stringify({ error: "Coze报错", details: errText }), { status: response.status });
     }
 
     const encoder = new TextEncoder();
@@ -64,17 +46,22 @@ export default async function handler(req) {
             const lines = chunk.split('\n');
 
             for (const line of lines) {
+              // 🟢 只要是 SSE 数据行，就尝试解析
               if (line.startsWith('data:')) {
                 try {
                   const jsonStr = line.slice(5).trim();
                   if (!jsonStr) continue;
                   const data = JSON.parse(jsonStr);
-                  
-                  // 宽松过滤：只要是 delta 消息且有 content 就发
-                  if (data.event === 'conversation.message.delta' && data.message?.content) {
-                     const content = data.message.content;
-                     // 过滤卡片代码
-                     if (content.includes('card_type')) continue;
+
+                  // 🟢 宽松策略：只要有 content 就发送，不管 type 是什么
+                  // 这样能防止 Bot 在“思考”或“查库”时前端以为断连了
+                  let content = "";
+                  if (data.content) content = data.content;
+                  else if (data.message && data.message.content) content = data.message.content;
+
+                  if (content) {
+                     // 过滤掉纯技术代码
+                     if (content.includes('card_type') || content.includes('template_url')) continue;
 
                      const msg = JSON.stringify({
                          event: 'conversation.message.delta',
@@ -97,6 +84,6 @@ export default async function handler(req) {
     return new Response(stream, { headers: { 'Content-Type': 'text/event-stream' } });
 
   } catch (error) {
-    return new Response(JSON.stringify({ error: "代码运行错误", details: error.message }), { status: 500 });
+    return new Response(JSON.stringify({ error: "代码错误", details: error.message }), { status: 500 });
   }
 }
