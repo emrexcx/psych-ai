@@ -103,7 +103,7 @@
             word-wrap: break-word;
         }
 
-        /* ✅ Markdown 样式修正 */
+        /* Markdown 样式修正 */
         .bubble p { margin: 0 0 10px 0; }
         .bubble p:last-child { margin-bottom: 0; }
         .bubble strong { color: var(--neon-cyan); font-weight: bold; }
@@ -169,16 +169,16 @@
     </div>
 
     <script>
-        // 配置 (已修复语法错误)
+        // ✅ 这里的 Bot ID 必须换成你自己的！
+        // ✅ 我使用了 DiceBear 在线头像，防止因为本地图片缺失导致裂图
         const agents = [
-            { id: 'freud', name: '弗洛伊德', botId: '7576937790106402857', avatar: 'images/freud.png' },
-            { id: 'jung', name: '荣格', botId: '7576939753841508378', avatar: 'images/jung.png' },
-            { id: 'adler', name: '阿德勒', botId: '7576940585882550326', avatar: 'images/adler.png' },
-            { id: 'contemporary', name: '当代动力', botId: '7576941130223255578', avatar: 'images/contemp.png' }, // 🟢 加了逗号
-            { id: 'narrative', name: '叙事治疗', botId: '7576941141384544262', avatar: 'images/narrative.png' } // 🟢 修正了图片路径
+            { id: 'freud', name: '弗洛伊德', botId: '7576937790106402857', avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Freud' },
+            { id: 'jung', name: '荣格', botId: '7576939753841508378', avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Jung' },
+            { id: 'adler', name: '阿德勒', botId: '7576940585882550326', avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Adler' },
+            { id: 'contemporary', name: '当代动力', botId: '7576941130223255578', avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Relational' },
+            { id: 'narrative', name: '叙事治疗', botId: '7576941141384544262', avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Narrative' }
         ];
 
-        // 状态存储（用于累积文本进行Markdown渲染）
         let agentBuffers = {};
 
         const chatArena = document.getElementById('chat-arena');
@@ -194,7 +194,8 @@
             // UI 重置
             userInput.value = ''; 
             sendBtn.disabled = true;
-            document.querySelector('#chat-arena > div').style.display = 'none'; // 隐藏 placeholder
+            const placeholder = document.querySelector('#chat-arena > div');
+            if(placeholder) placeholder.style.display = 'none';
 
             // 1. 显示用户消息
             addMessage('user', 'OPERATOR', query);
@@ -239,17 +240,16 @@
             
             chatArena.insertAdjacentHTML('beforeend', html);
             scrollToBottom();
-            // 返回最新添加的 bubble 元素用于后续更新
             const bubbles = chatArena.querySelectorAll('.bubble');
             return bubbles[bubbles.length - 1];
         }
 
         function scrollToBottom() { chatArena.scrollTop = chatArena.scrollHeight; }
 
-        // ✅ 真实 API 调用 (保持不变，已符合要求)
+        // ✅ 带有日志过滤功能的 API 调用函数
         async function simulateCozeAPIStream(agentId, prompt, onChunk) {
             const agent = agents.find(a => a.id === agentId);
-            // console.log(`[${agent.name}] 启动中...`); 
+            console.log(`[${agent.name}] 连接中...`);
 
             try {
                 const response = await fetch('/api/chat', {
@@ -261,6 +261,11 @@
                         conversation_id: "debate_" + Date.now()
                     })
                 });
+
+                if (!response.ok) {
+                    onChunk(" **[API连接错误]** ");
+                    return;
+                }
 
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
@@ -282,8 +287,7 @@
 
                                 const data = JSON.parse(rawJson);
                                 
-                                // 🛑 核心修改在这里：只允许 type 为 'answer' 的消息通过！
-                                // 这样就能把那些 {"msg_type":...} 的日志全部拦在外面
+                                // 🛑 核心过滤：只允许 type 为 'answer' 的消息通过！
                                 if (
                                     data.event === 'conversation.message.delta' && 
                                     data.message && 
@@ -291,7 +295,7 @@
                                     data.message.type === 'answer' 
                                 ) {
                                     const content = data.message.content;
-                                    // 双重保险：如果内容还是以 { 开头，说明是漏网之鱼，继续拦截
+                                    // 双重保险
                                     if (!content.trim().startsWith('{')) {
                                         onChunk(content);
                                     }
@@ -302,6 +306,11 @@
                 }
             } catch (err) {
                 console.error("Stream Error:", err);
-                onChunk(" **[连接中断]** ");
+                onChunk(" **[网络连接中断]** ");
             }
         }
+    </script>
+</body>
+</html>
+        }
+
