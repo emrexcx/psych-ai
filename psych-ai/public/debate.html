@@ -320,7 +320,7 @@
         // 真实 API 调用 (适配 V3 过滤)
         async function simulateCozeAPIStream(agentId, prompt, onChunk) {
             const agent = agents.find(a => a.id === agentId);
-            if(!agent || !agent.botId) return;
+            // console.log(`[${agent.name}] 启动...`);
 
             try {
                 const response = await fetch('/api/chat', {
@@ -332,31 +332,42 @@
                         conversation_id: "debate_" + Date.now()
                     })
                 });
-                
+
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
 
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
+                    
                     const chunk = decoder.decode(value, { stream: true });
                     const lines = chunk.split('\n');
-                    
+
                     for (const line of lines) {
                         if (line.startsWith('data:') && line.length > 5) {
                             try {
-                                const data = JSON.parse(line.slice(5));
-                                if (data.event === 'conversation.message.delta' && data.message?.content) {
-                                    onChunk(data.message.content);
+                                const rawJson = line.slice(5).trim();
+                                if (rawJson === '[DONE]') continue;
+                                const data = JSON.parse(rawJson);
+
+                                // 🟢 只要有 content，我就认！不管 type 是啥！
+                                if (data.message && data.message.content) {
+                                    const content = data.message.content;
+                                    
+                                    // 🛑 唯一的底线：如果这段话长得像代码日志，就屏蔽
+                                    // (比如包含 "msg_type" 或者 "plugin_id")
+                                    if (content.includes('"msg_type"') || content.includes('"plugin_id"')) {
+                                        continue; 
+                                    }
+
+                                    // 其他的通通显示！
+                                    onChunk(content);
                                 }
                             } catch (e) {}
                         }
                     }
                 }
             } catch (err) {
-                onChunk(" **[API连接错误]** ");
+                onChunk(" [中断] ");
             }
         }
-    </script>
-</body>
-</html>
