@@ -7,7 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;500;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
-        /* --- 全局变量：医疗科技风 --- */
+        /* --- 全局变量 --- */
         :root {
             --med-blue: #007bff;
             --med-bg: #f0f4f8;
@@ -55,17 +55,16 @@
         #panels-container {
             flex: 1; padding: 25px;
             display: flex; gap: 20px;
-            overflow-x: auto; /* 允许横向滚动 */
-            align-items: stretch; /* 等高 */
-            padding-bottom: 10px; /* 留出阴影空间 */
+            overflow-x: auto; 
+            align-items: stretch; 
+            padding-bottom: 10px;
         }
-        /* 隐藏容器滚动条 */
         #panels-container::-webkit-scrollbar { height: 8px; }
         #panels-container::-webkit-scrollbar-thumb { background: #cfd8dc; border-radius: 4px; }
 
         /* --- 专家卡片 --- */
         .expert-card {
-            flex: 1; min-width: 300px; /* 保证卡片宽度 */
+            flex: 1; min-width: 300px; 
             background: var(--card-bg);
             border-radius: 12px; border: 1px solid #eef2f5;
             box-shadow: var(--shadow);
@@ -89,20 +88,20 @@
         .expert-info span { font-size: 12px; color: #8898aa; font-weight: 500; }
 
         /* 顶部颜色条区分 */
-        .card-freud { border-top: 4px solid #e74c3c; }      /* 弗洛伊德 - 红 */
-        .card-jung { border-top: 4px solid #9b59b6; }       /* 荣格 - 紫 */
-        .card-adler { border-top: 4px solid #f39c12; }      /* 阿德勒 - 橙 */
-        .card-contemp { border-top: 4px solid #20c997; }    /* 当代动力 - 绿 */
-        .card-narrative { border-top: 4px solid #3498db; }  /* 叙事 - 蓝 */
+        .card-freud { border-top: 4px solid #e74c3c; }     
+        .card-jung { border-top: 4px solid #9b59b6; }      
+        .card-adler { border-top: 4px solid #f39c12; }     
+        .card-contemp { border-top: 4px solid #20c997; }   
+        .card-narrative { border-top: 4px solid #3498db; } 
 
-        /* --- 诊断输出区 (样式优化) --- */
+        /* --- 诊断输出区 --- */
         .diagnosis-area {
             flex: 1; padding: 25px;
             font-size: 14px; line-height: 1.8; color: #4a5568;
             overflow-y: auto; 
             background-color: #fff;
         }
-        /* Markdown 渲染后的标签样式 */
+        /* Markdown 样式 */
         .diagnosis-area p { margin-bottom: 10px; }
         .diagnosis-area strong { color: #000; font-weight: 700; }
         .diagnosis-area ul { padding-left: 20px; margin-bottom: 10px; }
@@ -157,42 +156,20 @@
 <script>
     // ⚠️⚠️⚠️ 必填：请把 ID 换成你自己的！ ⚠️⚠️⚠️
     const agents = [
-        { 
-            id: 'freud', name: 'S. Freud', title: '精神分析', theme: 'card-freud', 
-            botId: '7576937790106402857', 
-            avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Freud&backgroundColor=e74c3c' 
-        },
-        { 
-            id: 'jung', name: 'C.G. Jung', title: '分析心理学', theme: 'card-jung', 
-            botId: '7576939753841508378', 
-            avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Jung&backgroundColor=9b59b6' 
-        },
-        { 
-            id: 'adler', name: 'A. Adler', title: '个体心理学', theme: 'card-adler', 
-            botId: '7576940585882550326', 
-            avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Adler&backgroundColor=f39c12' 
-        },
-        { 
-            id: 'contemporary', name: 'Contemporary', title: '当代动力学', theme: 'card-contemp', 
-            botId: '7576941130223255578', 
-            avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Relational&backgroundColor=20c997' 
-        },
-        { 
-            id: 'narrative', name: 'Narrative', title: '叙事治疗', theme: 'card-narrative', 
-            botId: '7576941141384544262', 
-            avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=White&backgroundColor=3498db' 
-        }
+        { id: 'freud', name: 'S. Freud', title: '精神分析', theme: 'card-freud', botId: '7576937790106402857', avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Freud&backgroundColor=e74c3c' },
+        { id: 'jung', name: 'C.G. Jung', title: '分析心理学', theme: 'card-jung', botId: '7576939753841508378', avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Jung&backgroundColor=9b59b6' },
+        { id: 'adler', name: 'A. Adler', title: '个体心理学', theme: 'card-adler', botId: '7576940585882550326', avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Adler&backgroundColor=f39c12' },
+        { id: 'contemporary', name: 'Contemporary', title: '当代动力学', theme: 'card-contemp', botId: '7576941130223255578', avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Relational&backgroundColor=20c997' },
+        { id: 'narrative', name: 'Narrative', title: '叙事治疗', theme: 'card-narrative', botId: '7576941141384544262', avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=White&backgroundColor=3498db' }
     ];
 
     const container = document.getElementById('panels-container');
-    
-    // 🟢 状态存储：用来存每个专家当前说到的完整话，用于 Markdown 解析
     const agentResponses = {}; 
 
     function initUI() {
         container.innerHTML = '';
         agents.forEach(agent => {
-            agentResponses[agent.id] = ""; // 初始化为空
+            agentResponses[agent.id] = ""; 
             const html = `
                 <div class="expert-card ${agent.theme}">
                     <div class="card-header">
@@ -223,7 +200,6 @@
 
         input.value = ''; btn.disabled = true; btn.innerText = '分析进行中...';
 
-        // 清空并显示加载状态
         agents.forEach(agent => {
             agentResponses[agent.id] = ""; 
             document.getElementById(`output-${agent.id}`).innerHTML = '<div style="color:#007bff; display:flex; align-items:center; gap:5px;"><i>⏳</i> 正在生成独立报告...</div>';
@@ -234,11 +210,8 @@
         const tasks = agents.map(agent => {
             return simulateCozeAPIStream(agent.botId, experiencePrompt, (chunk) => {
                 const el = document.getElementById(`output-${agent.id}`);
-                
-                // 🟢 核心修复：累积文本 -> 解析 Markdown
                 agentResponses[agent.id] += chunk;
                 el.innerHTML = marked.parse(agentResponses[agent.id]);
-                
                 el.scrollTop = el.scrollHeight;
             });
         });
@@ -247,11 +220,9 @@
         btn.disabled = false; btn.innerText = '开始会诊';
     }
 
+    // ✅ 带日志过滤的 API 调用函数
     async function simulateCozeAPIStream(botId, fullPrompt, callback) {
-        if(!botId) {
-            callback("[错误: 未配置 Bot ID]");
-            return;
-        }
+        if(!botId) { callback("[错误: 未配置 Bot ID]"); return; }
 
         try {
             const response = await fetch('/api/chat', {
@@ -276,9 +247,18 @@
                 for (const line of lines) {
                     if (line.startsWith('data:') && line.length > 5) {
                         try {
-                            const data = JSON.parse(line.slice(5));
+                            const rawJson = line.slice(5).trim();
+                            if (rawJson === '[DONE]') continue;
+                            const data = JSON.parse(rawJson);
+                            
+                            // 🛑 核心过滤逻辑：只看 content，且过滤掉 JSON 日志
                             if (data.event === 'conversation.message.delta' && data.message && data.message.content) {
-                                callback(data.message.content);
+                                const content = data.message.content;
+                                
+                                // 🛡️ 过滤掉代码日志
+                                if (!content.trim().startsWith('{')) {
+                                    callback(content);
+                                }
                             }
                         } catch(e) {}
                     }
