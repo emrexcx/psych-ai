@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>心理会诊 - 深度体验版</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         /* --- 全局变量：医疗科技风 --- */
         :root {
@@ -94,13 +95,18 @@
         .card-contemp { border-top: 4px solid #20c997; }    /* 当代动力 - 绿 */
         .card-narrative { border-top: 4px solid #3498db; }  /* 叙事 - 蓝 */
 
-        /* --- 诊断输出区 --- */
+        /* --- 诊断输出区 (样式优化) --- */
         .diagnosis-area {
             flex: 1; padding: 25px;
             font-size: 14px; line-height: 1.8; color: #4a5568;
-            overflow-y: auto; white-space: pre-wrap;
+            overflow-y: auto; 
             background-color: #fff;
         }
+        /* Markdown 渲染后的标签样式 */
+        .diagnosis-area p { margin-bottom: 10px; }
+        .diagnosis-area strong { color: #000; font-weight: 700; }
+        .diagnosis-area ul { padding-left: 20px; margin-bottom: 10px; }
+
         .diagnosis-area::-webkit-scrollbar { width: 5px; }
         .diagnosis-area::-webkit-scrollbar-thumb { background: #edf2f7; border-radius: 3px; }
 
@@ -139,8 +145,7 @@
         </div>
     </div>
 
-    <div id="panels-container">
-        </div>
+    <div id="panels-container"></div>
 
     <div class="input-wrapper">
         <div class="input-group">
@@ -150,8 +155,7 @@
     </div>
 
 <script>
-    // ⚠️⚠️⚠️ 请务必在这里填入真实的 Bot ID ⚠️⚠️⚠️
-    // 头像我暂时用了在线占位符，你可以把 avatar 的链接换成 'images/freud.png' 等本地路径
+    // ⚠️⚠️⚠️ 必填：请把 ID 换成你自己的！ ⚠️⚠️⚠️
     const agents = [
         { 
             id: 'freud', name: 'S. Freud', title: '精神分析', theme: 'card-freud', 
@@ -181,11 +185,14 @@
     ];
 
     const container = document.getElementById('panels-container');
+    
+    // 🟢 状态存储：用来存每个专家当前说到的完整话，用于 Markdown 解析
+    const agentResponses = {}; 
 
-    // 1. 初始化界面
     function initUI() {
         container.innerHTML = '';
         agents.forEach(agent => {
+            agentResponses[agent.id] = ""; // 初始化为空
             const html = `
                 <div class="expert-card ${agent.theme}">
                     <div class="card-header">
@@ -208,46 +215,41 @@
 
     function handleKeyPress(event) { if (event.key === 'Enter') startConsultation(); }
 
-    // 2. 核心逻辑：并发调用 API
     async function startConsultation() {
         const input = document.getElementById('user-input');
         const btn = document.getElementById('send-btn');
         const query = input.value.trim();
         if(!query) return;
 
-        input.value = ''; 
-        btn.disabled = true; 
-        btn.innerText = '分析进行中...';
+        input.value = ''; btn.disabled = true; btn.innerText = '分析进行中...';
 
-        // 2.1 清空所有卡片
+        // 清空并显示加载状态
         agents.forEach(agent => {
-            const el = document.getElementById(`output-${agent.id}`);
-            el.innerHTML = '<div style="color:#007bff; display:flex; align-items:center; gap:5px;"><i>⏳</i> 正在生成独立报告...</div>';
+            agentResponses[agent.id] = ""; 
+            document.getElementById(`output-${agent.id}`).innerHTML = '<div style="color:#007bff; display:flex; align-items:center; gap:5px;"><i>⏳</i> 正在生成独立报告...</div>';
         });
 
-        // 2.2 注入“体验版”专用指令：强调独立、客观、不吵架
         const experiencePrompt = `【指令：现在是专业的心理咨询会诊模式。请忽略其他专家的存在，基于你的理论流派，提供一份独立、冷静、深度的分析报告。语气要专业、客观。不要攻击他人。】\n\n用户困扰：${query}`;
 
-        // 2.3 并发请求 (5路同时发)
         const tasks = agents.map(agent => {
-            return simulateCozeAPIStream(agent.botId, experiencePrompt, (chunk, isFirstChunk) => {
+            return simulateCozeAPIStream(agent.botId, experiencePrompt, (chunk) => {
                 const el = document.getElementById(`output-${agent.id}`);
-                // 收到第一个字时，清空“正在生成”提示
-                if(isFirstChunk && el.innerHTML.includes('正在生成')) { el.innerHTML = ''; }
-                el.innerHTML += chunk;
+                
+                // 🟢 核心修复：累积文本 -> 解析 Markdown
+                agentResponses[agent.id] += chunk;
+                el.innerHTML = marked.parse(agentResponses[agent.id]);
+                
                 el.scrollTop = el.scrollHeight;
             });
         });
 
         await Promise.all(tasks);
-        btn.disabled = false; 
-        btn.innerText = '开始会诊';
+        btn.disabled = false; btn.innerText = '开始会诊';
     }
 
-    // --- 真实后端 API 调用 ---
     async function simulateCozeAPIStream(botId, fullPrompt, callback) {
         if(!botId) {
-            callback("[错误: 未配置 Bot ID]", true);
+            callback("[错误: 未配置 Bot ID]");
             return;
         }
 
@@ -258,13 +260,12 @@
                 body: JSON.stringify({
                     query: fullPrompt,
                     bot_id: botId,
-                    conversation_id: "exp_" + Date.now() // 独立会话ID
+                    conversation_id: "exp_" + Date.now()
                 })
             });
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
-            let isFirst = true;
 
             while (true) {
                 const { done, value } = await reader.read();
@@ -277,15 +278,14 @@
                         try {
                             const data = JSON.parse(line.slice(5));
                             if (data.event === 'conversation.message.delta' && data.message && data.message.content) {
-                                callback(data.message.content, isFirst);
-                                isFirst = false;
+                                callback(data.message.content);
                             }
                         } catch(e) {}
                     }
                 }
             }
         } catch (err) {
-            callback("[网络连接错误]", true);
+            callback("[网络连接错误]");
         }
     }
 </script>
