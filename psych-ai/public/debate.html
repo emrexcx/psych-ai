@@ -249,6 +249,8 @@
         // ✅ 真实 API 调用 (保持不变，已符合要求)
         async function simulateCozeAPIStream(agentId, prompt, onChunk) {
             const agent = agents.find(a => a.id === agentId);
+            // console.log(`[${agent.name}] 启动中...`); 
+
             try {
                 const response = await fetch('/api/chat', {
                     method: 'POST',
@@ -262,29 +264,44 @@
 
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
+                let buffer = '';
 
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
-                    const chunk = decoder.decode(value, { stream: true });
-                    const lines = chunk.split('\n');
+                    
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop();
 
                     for (const line of lines) {
                         if (line.startsWith('data:') && line.length > 5) {
                             try {
-                                const data = JSON.parse(line.slice(5));
-                                if (data.event === 'conversation.message.delta' && data.message?.content) {
-                                    onChunk(data.message.content);
+                                const rawJson = line.slice(5).trim();
+                                if (rawJson === '[DONE]') continue;
+
+                                const data = JSON.parse(rawJson);
+                                
+                                // 🛑 核心修改在这里：只允许 type 为 'answer' 的消息通过！
+                                // 这样就能把那些 {"msg_type":...} 的日志全部拦在外面
+                                if (
+                                    data.event === 'conversation.message.delta' && 
+                                    data.message && 
+                                    data.message.content &&
+                                    data.message.type === 'answer' 
+                                ) {
+                                    const content = data.message.content;
+                                    // 双重保险：如果内容还是以 { 开头，说明是漏网之鱼，继续拦截
+                                    if (!content.trim().startsWith('{')) {
+                                        onChunk(content);
+                                    }
                                 }
                             } catch (e) {}
                         }
                     }
                 }
             } catch (err) {
-                console.error(err);
-                onChunk(" **[信号中断]** ");
+                console.error("Stream Error:", err);
+                onChunk(" **[连接中断]** ");
             }
         }
-    </script>
-</body>
-</html>
