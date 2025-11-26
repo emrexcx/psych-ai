@@ -1,69 +1,96 @@
-// 文件路径：api/chat.js
-
+// api/chat.js (Coze V3 版)
 export const config = {
-  runtime: 'edge', // 使用 Edge 模式，打字机效果更流畅
+  runtime: 'edge',
 };
 
 export default async function handler(req) {
-  // 只允许 POST 请求
   if (req.method !== 'POST') {
     return new Response('Method Not Allowed', { status: 405 });
   }
 
   try {
-    // 1. 解析前端发来的数据
     const { query, bot_id, conversation_id } = await req.json();
-
-    // 2. 从 Vercel 后台读取你的 API Key (最安全！)
     const COZE_API_KEY = process.env.COZE_API_KEY;
 
     if (!COZE_API_KEY) {
-      return new Response(
-        JSON.stringify({ error: 'API Key 未配置，请在 Vercel 环境变量中添加 COZE_API_KEY' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
+        return new Response(JSON.stringify({ error: "API Key 未配置" }), { status: 500 });
     }
 
-    // 3. 转发请求给 Coze
-    // 注意：国内版用 api.coze.cn，国际版用 api.coze.com
-    const cozeRes = await fetch('https://api.coze.cn/open_api/v2/chat', {
+    // --- 发送 V3 格式请求 ---
+    const response = await fetch('https://api.coze.cn/v3/chat', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${COZE_API_KEY}`,
         'Content-Type': 'application/json',
-        'Accept': '*/*',
-        'Connection': 'keep-alive',
       },
       body: JSON.stringify({
-        conversation_id: conversation_id || "web_" + Date.now(),
         bot_id: bot_id,
-        user: "web_user",
-        query: query,
-        stream: true, // 开启流式输出
+        user_id: "web_user_001", 
+        stream: true,
+        auto_save_history: true, 
+        additional_messages: [
+          {
+            role: "user",
+            content: query,
+            content_type: "text"
+          }
+        ]
       }),
     });
 
-    if (!cozeRes.ok) {
-      const errorText = await cozeRes.text();
-      return new Response(
-        JSON.stringify({ error: `Coze API 报错: ${cozeRes.status}`, details: errorText }),
-        { status: cozeRes.status, headers: { 'Content-Type': 'application/json' } }
-      );
+    if (!response.ok) {
+        const errText = await response.text();
+        return new Response(JSON.stringify({ error: errText }), { status: response.status });
     }
 
-    // 4. 把流直接转发回前端
-    return new Response(cozeRes.body, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-      },
+    // --- 处理 V3 流并转发 ---
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+    
+    const stream = new ReadableStream({
+      async start(controller) {
+        const reader = response.body.getReader();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop();
+
+          for (const line of lines) {
+            if (line.startsWith('data:')) {
+              try {
+                const jsonStr = line.slice(5).trim();
+                if (!jsonStr) continue;
+                
+                const data = JSON.parse(jsonStr);
+                
+                // 捕捉 V3 的回复内容
+                if (data.event === 'conversation.message.delta' && data.type === 'answer') {
+                   const text = data.content;
+                   // 包装成前端能看懂的格式
+                   const frontendMsg = JSON.stringify({
+                       event: 'conversation.message.delta',
+                       message: { content: text }
+                   });
+                   controller.enqueue(encoder.encode(`data: ${frontendMsg}\n\n`));
+                }
+              } catch (e) {}
+            }
+          }
+        }
+        controller.close();
+      }
+    });
+
+    return new Response(stream, {
+      headers: { 'Content-Type': 'text/event-stream' },
     });
 
   } catch (error) {
-    return new Response(
-      JSON.stringify({ error: '服务器内部错误', details: error.message }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
   }
 }
