@@ -22,7 +22,7 @@ export default async function handler(req) {
 
     // 🔴🔴🔴 请在这里直接填入你的 API Key！不要留空！🔴🔴🔴
     // 例如: const COZE_API_KEY = 'pat_123456789...';
-    const COZE_API_KEY = 'pat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'; 
+    const COZE_API_KEY = 'pat_Vswkv5cP4s9Ad7gpoSlvORGwZTfI8zagWZomC8STFUN84ae4mMONBU6n0QtmAA3B'; 
 
     // 检查一下是不是忘了填
     if (COZE_API_KEY.includes('xxxx')) {
