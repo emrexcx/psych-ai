@@ -25,167 +25,247 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            perspective: 1000px; 
         }
 
-        /* 背景特效 */
+        /* --- 2. 纵深背景层 --- */
         .cyber-floor {
-            position: absolute; top: 50%; left: 50%; width: 200vw; height: 200vh;
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 200vw; height: 200vh;
             transform: translate(-50%, -50%) rotateX(60deg);
             background-image: 
-                linear-gradient(rgba(0, 102, 255, 0.3) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 102, 255, 0.3) 1px, transparent 1px);
+                linear-gradient(rgba(0, 102, 255, 0.2) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 102, 255, 0.2) 1px, transparent 1px);
             background-size: 50px 50px;
-            z-index: 0; animation: gridMove 20s linear infinite;
+            z-index: 0;
+            animation: gridMove 20s linear infinite;
             mask-image: linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 80%);
         }
-        @keyframes gridMove { 100% { background-position: 0 500px; } }
 
-        /* --- 主容器 --- */
+        @keyframes gridMove {
+            0% { background-position: 0 0; }
+            100% { background-position: 0 500px; }
+        }
+
+        /* 光源 */
+        .light-burst {
+            position: fixed; top: 10%; left: 50%; transform: translate(-50%, -50%);
+            width: 0; height: 0;
+            box-shadow: 0 0 150px 60px rgba(0, 102, 255, 0.4), 0 0 0px 2px rgba(255, 255, 255, 0.8);
+            z-index: 1; pointer-events: none;
+        }
+
+        /* --- 3. 主容器 --- */
         #app-container {
             position: relative; z-index: 10;
-            width: 90%; max-width: 850px; height: 90vh;
-            background: rgba(0, 5, 15, 0.75);
-            backdrop-filter: blur(10px);
+            width: 95%; max-width: 850px; height: 95vh;
+            background: rgba(0, 5, 15, 0.85);
+            backdrop-filter: blur(8px);
             display: flex; flex-direction: column;
-            border: 1px solid rgba(0, 234, 255, 0.3);
-            border-radius: 12px; overflow: hidden;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            border: 1px solid var(--neon-cyan); 
+            border-top: 2px solid #fff;
+            box-shadow: 0 0 40px rgba(0, 102, 255, 0.2); 
+            border-radius: 4px;
+            overflow: hidden;
         }
 
         /* --- 头部 --- */
         .header {
-            padding: 20px; background: rgba(0,0,0,0.4);
-            border-bottom: 1px solid rgba(0, 234, 255, 0.2);
-            display: flex; justify-content: center; align-items: center;
+            padding: 20px; 
+            background: rgba(0,0,0,0.6);
+            border-bottom: 2px solid #fff;
+            box-shadow: 0 0 20px var(--neon-purple);
             position: relative;
+            display: flex; justify-content: center; align-items: center;
+            height: 60px;
         }
+        
         .header h1 {
-            margin: 0; font-size: 24px; letter-spacing: 2px;
-            text-shadow: 0 0 10px var(--neon-blue);
+            margin: 0; font-size: 24px; letter-spacing: 4px; color: #fff;
+            text-shadow: 0 0 10px #fff, 0 0 20px var(--neon-purple), 0 0 40px var(--neon-purple);
         }
 
-        /* 按钮样式 */
-        .nav-btn {
-            position: absolute; text-decoration: none; font-size: 12px;
-            padding: 6px 12px; border-radius: 4px; transition: 0.3s;
-            background: rgba(0,0,0,0.5);
-        }
+        /* 左上角：返回首页 */
         .home-btn {
-            left: 20px; border: 1px solid var(--neon-blue); color: var(--neon-blue);
+            position: absolute; left: 20px;
+            text-decoration: none; font-size: 12px; color: #aaa;
+            border: 1px solid #555; padding: 6px 12px; border-radius: 4px;
+            transition: 0.3s; background: rgba(0,0,0,0.8); text-transform: uppercase;
         }
-        .home-btn:hover { background: var(--neon-blue); color: #fff; box-shadow: 0 0 10px var(--neon-blue); }
-        
+        .home-btn:hover { border-color: #fff; color: #fff; box-shadow: 0 0 10px rgba(255,255,255,0.5); }
+
+        /* 右上角：深度会诊 */
         .switch-btn {
-            right: 20px; border: 1px solid var(--neon-cyan); color: var(--neon-cyan);
+            position: absolute; right: 20px;
+            text-decoration: none; font-size: 12px; color: var(--neon-cyan);
+            border: 1px solid var(--neon-cyan); padding: 6px 12px; border-radius: 4px;
+            transition: 0.3s; background: rgba(0,0,0,0.5); text-transform: uppercase;
         }
-        .switch-btn:hover { background: var(--neon-cyan); color: #000; box-shadow: 0 0 10px var(--neon-cyan); }
+        .switch-btn:hover { background: var(--neon-cyan); color: #000; box-shadow: 0 0 15px var(--neon-cyan); }
 
         /* --- 聊天区 --- */
         #chat-arena {
-            flex: 1; overflow-y: auto; padding: 20px;
+            flex: 1; overflow-y: auto; padding: 25px;
             display: flex; flex-direction: column; gap: 20px;
+            background-image: 
+                linear-gradient(rgba(0, 234, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 234, 255, 0.02) 1px, transparent 1px);
+            background-size: 40px 40px;
+            scrollbar-width: thin; scrollbar-color: var(--neon-blue) rgba(0,0,0,0.5);
         }
+        #chat-arena::-webkit-scrollbar { width: 6px; }
+        #chat-arena::-webkit-scrollbar-thumb { background: var(--neon-blue); border-radius: 3px; }
 
-        /* 消息气泡 */
+        #placeholder-container {
+            text-align: center; margin-top: 40%;
+            color: var(--neon-cyan); opacity: 0.8;
+            animation: pulse 3s infinite;
+        }
+        @keyframes pulse { 0%, 100% { opacity: 0.8; } 50% { opacity: 0.4; } }
+
+        /* 预览区 */
+        #preview-btn {
+            margin-top: 20px; padding: 10px 20px; background: rgba(0,0,0,0.5);
+            border: 1px solid var(--neon-cyan); color: var(--neon-cyan);
+            cursor: pointer; transition: 0.3s;
+        }
+        #preview-btn:hover { background: var(--neon-cyan); color: #000; box-shadow: 0 0 20px var(--neon-cyan); }
+        
+        #avatar-preview-area {
+            display: none; justify-content: center; gap: 15px; margin-top: 20px; padding: 15px;
+            background: rgba(0, 234, 255, 0.05); border: 1px dashed rgba(0, 234, 255, 0.3);
+        }
+        .preview-item { display: flex; flex-direction: column; align-items: center; }
+        .preview-avatar { width: 50px; height: 50px; border-radius: 50%; background-size: cover; border: 2px solid var(--neon-cyan); margin-bottom: 5px; }
+        .preview-name { font-size: 10px; color: var(--neon-cyan); }
+
+        /* --- 消息组件 --- */
         .message-group { display: flex; align-items: flex-start; }
         .avatar {
-            width: 40px; height: 40px; border-radius: 50%; margin-right: 15px; flex-shrink: 0;
-            background-size: cover; border: 2px solid #fff; box-shadow: 0 0 10px var(--neon-blue);
+            width: 50px; height: 50px; border-radius: 50%; margin-right: 15px; flex-shrink: 0;
+            background-size: cover; background-color: #000;
+            border: 2px solid #fff; box-shadow: 0 0 15px var(--neon-blue);
         }
         .message-content { max-width: 85%; }
-        .agent-name { font-size: 12px; color: var(--neon-cyan); margin-bottom: 5px; }
-        
+        .agent-name { font-size: 12px; color: var(--neon-cyan); margin-bottom: 6px; }
         .bubble {
-            padding: 15px; background: rgba(0, 10, 30, 0.8);
+            padding: 15px 20px;
+            background: rgba(0, 15, 35, 0.9);
             border: 1px solid var(--neon-blue); color: #e0f7ff;
-            border-radius: 0 15px 15px 15px; 
-            line-height: 1.5;
-            word-wrap: break-word;
+            border-radius: 0 16px 16px 16px; 
+            font-size: 15px; line-height: 1.6;
+            box-shadow: 0 0 10px rgba(0, 102, 255, 0.2);
         }
-
-        /* Markdown 样式修正 */
-        .bubble p { margin: 0 0 10px 0; }
-        .bubble p:last-child { margin-bottom: 0; }
-        .bubble strong { color: var(--neon-cyan); font-weight: bold; }
-        .bubble em { color: var(--neon-purple); font-style: italic; }
-        .bubble ul, .bubble ol { margin: 5px 0; padding-left: 20px; }
-        .bubble code { background: rgba(255,255,255,0.1); padding: 2px 4px; border-radius: 3px; font-family: monospace; }
-
-        /* 用户消息 */
+        /* Markdown 样式 */
+        .bubble strong { color: var(--neon-purple); font-weight: bold; }
+        .bubble p { margin: 5px 0; }
+        
         .message-group.user { flex-direction: row-reverse; }
-        .message-group.user .avatar { margin-right: 0; margin-left: 15px; border-color: var(--neon-purple); box-shadow: 0 0 10px var(--neon-purple); }
+        .message-group.user .avatar { margin-right: 0; margin-left: 15px; border-color: var(--neon-purple); box-shadow: 0 0 15px var(--neon-purple); }
         .message-group.user .bubble {
-            background: rgba(20, 0, 20, 0.8); border-color: var(--neon-purple);
-            border-radius: 15px 0 15px 15px;
+            background: rgba(25, 0, 25, 0.9); border-color: var(--neon-purple);
+            border-radius: 16px 0 16px 16px;
         }
         .message-group.user .agent-name { text-align: right; color: var(--neon-purple); }
 
-        /* --- 输入区 --- */
+        /* --- 底部输入栏 --- */
         .input-area {
-            padding: 20px; background: rgba(0,0,0,0.8);
-            border-top: 1px solid rgba(0, 234, 255, 0.3);
-            display: flex; gap: 10px;
+            padding: 25px;
+            background: rgba(0,0,0,0.95);
+            border-top: 1px solid var(--neon-cyan);
+            box-shadow: 0 -10px 30px rgba(0, 234, 255, 0.05);
+            display: flex; gap: 15px;
         }
+        
         #user-input {
-            flex: 1; padding: 12px; background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(0, 234, 255, 0.3); color: var(--neon-cyan);
-            outline: none; font-family: inherit;
+            flex: 1; padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(0, 234, 255, 0.4);
+            color: var(--neon-cyan); font-family: 'Share Tech Mono'; font-size: 16px;
+            outline: none; transition: 0.3s;
         }
-        #send-btn {
-            padding: 0 25px; cursor: pointer;
-            background: linear-gradient(135deg, var(--neon-blue), var(--neon-purple));
-            border: none; color: #fff; font-weight: bold;
-        }
+        #user-input:focus { border-color: var(--neon-cyan); box-shadow: 0 0 20px rgba(0, 234, 255, 0.2); background: rgba(0,0,0,0.8); }
 
-        /* 移动端适配 */
-        @media (max-width: 600px) {
-            .header h1 { font-size: 16px; }
-            .nav-btn { position: relative; left: auto; right: auto; font-size: 10px; padding: 4px 8px; }
-            .header { justify-content: space-between; gap: 5px; }
+        #send-btn {
+            padding: 0 30px;
+            background: linear-gradient(135deg, var(--neon-purple), #ff0055);
+            border: 1px solid #fff; color: #fff; font-weight: bold; font-size: 16px; cursor: pointer;
+            box-shadow: 0 0 15px var(--neon-purple);
+            transition: 0.3s;
         }
+        #send-btn:hover { transform: scale(1.05); box-shadow: 0 0 40px var(--neon-purple); }
+
     </style>
 </head>
 <body>
 
     <div class="cyber-floor"></div>
+    <div class="light-burst"></div>
 
     <div id="app-container">
         <div class="header">
-            <a href="index.html" class="nav-btn home-btn">↩ 返回主页</a>
-            <h1>NEON DEBATE</h1>
-            <a href="experience.html" class="nav-btn switch-btn">➜ 深度会诊</a>
+            <a href="index.html" class="home-btn">⌂ 首页</a>
+            
+            <h1>NEON DEBATE // 核心中枢</h1>
+            
+            <a href="experience.html" class="switch-btn">➜ 深度会诊</a>
         </div>
 
         <div id="chat-arena">
-            <div style="text-align:center; margin-top:100px; color:#fff; opacity:0.7;">
-                SYSTEM READY...
+            <div id="placeholder-container">
+                <div style="font-size: 20px;">SYSTEM READY...</div>
+                <div style="font-size: 12px; margin-top: 10px; opacity: 0.7;">等待数据输入</div>
+                <button id="preview-btn" onclick="togglePreview()">[ 扫描专家 ]</button>
+                <div id="avatar-preview-area"></div>
             </div>
         </div>
 
         <div class="input-area">
-            <input type="text" id="user-input" placeholder="输入辩题..." onkeypress="handleKeyPress(event)">
+            <input type="text" id="user-input" placeholder="输入指令..." onkeypress="handleKeyPress(event)">
             <button id="send-btn" onclick="startBrawl()">发送</button>
         </div>
     </div>
 
     <script>
-        // ✅ 这里的 Bot ID 必须换成你自己的！
-        // ✅ 我使用了 DiceBear 在线头像，防止因为本地图片缺失导致裂图
+        // ✅ 使用本地头像路径 (需确保 public/images 文件夹里有这些图)
         const agents = [
-            { id: 'freud', name: '弗洛伊德', botId: '7576937790106402857', avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Freud' },
-            { id: 'jung', name: '荣格', botId: '7576939753841508378', avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Jung' },
-            { id: 'adler', name: '阿德勒', botId: '7576940585882550326', avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Adler' },
-            { id: 'contemporary', name: '当代动力', botId: '7576941130223255578', avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Relational' },
-            { id: 'narrative', name: '叙事治疗', botId: '7576941141384544262', avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Narrative' }
+            { id: 'freud', name: '弗洛伊德', botId: '7576937790106402857', avatar: 'images/freud.png' },
+            { id: 'jung', name: '荣格', botId: '7576939753841508378', avatar: 'images/jung.png' },
+            { id: 'adler', name: '阿德勒', botId: '7576940585882550326', avatar: 'images/adler.png' },
+            { id: 'contemporary', name: '当代动力', botId: '7576941130223255578', avatar: 'images/contemp.png' },
+            { id: 'narrative', name: '叙事治疗', botId: '7576941141384544262', avatar: 'images/narrative.png' }
         ];
 
+        // 状态存储（用于累积文本进行Markdown渲染）
         let agentBuffers = {};
 
         const chatArena = document.getElementById('chat-arena');
         const userInput = document.getElementById('user-input');
         const sendBtn = document.getElementById('send-btn');
+        const placeholderContainer = document.getElementById('placeholder-container');
+        const previewArea = document.getElementById('avatar-preview-area');
+        const previewBtn = document.getElementById('preview-btn');
 
-        function handleKeyPress(e) { if (e.key === 'Enter') startBrawl(); }
+        function togglePreview() {
+            if (previewArea.style.display === 'flex') {
+                previewArea.style.display = 'none';
+                previewBtn.innerHTML = '[ 扫描专家 ]';
+            } else {
+                if (previewArea.innerHTML.trim() === '') {
+                    agents.forEach(agent => {
+                       const item = document.createElement('div');
+                       item.className = 'preview-item';
+                       item.innerHTML = `<div class="preview-avatar" style="background-image: url('${agent.avatar}'); width: 50px; height: 50px; border-radius: 50%; background-size: cover; border: 2px solid var(--neon-cyan); margin-bottom: 5px;"></div><div class="preview-name" style="font-size: 10px; color: var(--neon-cyan);">${agent.name}</div>`;
+                       previewArea.appendChild(item);
+                    });
+                }
+                previewArea.style.display = 'flex';
+                previewBtn.innerHTML = '[ 关闭扫描 ]';
+            }
+        }
+
+        function handleKeyPress(event) { if (event.key === 'Enter') startBrawl(); }
 
         async function startBrawl() {
             const query = userInput.value.trim();
@@ -194,26 +274,23 @@
             // UI 重置
             userInput.value = ''; 
             sendBtn.disabled = true;
-            const placeholder = document.querySelector('#chat-arena > div');
-            if(placeholder) placeholder.style.display = 'none';
+            if(placeholderContainer) placeholderContainer.style.display = 'none';
 
             // 1. 显示用户消息
-            addMessage('user', 'OPERATOR', query);
+            addUserMessage(query); 
 
             // 2. 初始化所有专家的气泡
             const bubbleElements = {};
             agents.forEach(agent => {
-                // 清空该专家的缓存
                 agentBuffers[agent.id] = ''; 
-                // 创建气泡并保存 DOM 引用
-                bubbleElements[agent.id] = addMessage('agent', agent.name, '<span class="cursor">_</span>', agent.avatar);
+                bubbleElements[agent.id] = addAgentMessageBubble(agent);
             });
 
             const debatePrompt = `【辩论指令：简短、犀利、反驳他人。50字内。】用户：${query}`;
 
             // 3. 并发调用 API
             const tasks = agents.map(agent => simulateCozeAPIStream(agent.id, debatePrompt, (chunk) => {
-                // ✅ 核心修改：累积文本 -> 解析Markdown -> 更新HTML
+                // ✅ 核心：累积文本 -> 解析Markdown -> 更新HTML
                 agentBuffers[agent.id] += chunk;
                 const html = marked.parse(agentBuffers[agent.id]);
                 bubbleElements[agent.id].innerHTML = html;
@@ -224,32 +301,26 @@
             sendBtn.disabled = false;
         }
 
-        // 添加消息到界面
-        function addMessage(type, name, content, avatarUrl) {
-            const isUser = type === 'user';
-            const avatar = isUser ? 'https://placehold.co/100/bd00ff/fff?text=OP' : avatarUrl;
-            
-            const html = `
-                <div class="message-group ${type}">
-                    <div class="avatar" style="background-image: url('${avatar}')"></div>
-                    <div class="message-content">
-                        <div class="agent-name">${name}</div>
-                        <div class="bubble">${content}</div>
-                    </div>
-                </div>`;
-            
+        function addUserMessage(text) {
+            const html = `<div class="message-group user"><div class="avatar" style="background-image: url('https://placehold.co/200x200/000000/ff0055.png?text=USER'); border-color: #bd00ff; box-shadow: 0 0 10px #bd00ff;"></div><div class="message-content"><div class="agent-name" style="text-align:right; color:#bd00ff;">OPERATOR</div><div class="bubble">${text}</div></div></div>`;
             chatArena.insertAdjacentHTML('beforeend', html);
             scrollToBottom();
-            const bubbles = chatArena.querySelectorAll('.bubble');
-            return bubbles[bubbles.length - 1];
+        }
+
+        function addAgentMessageBubble(agent) {
+            const bubbleId = `bubble-${agent.id}-${Date.now()}`;
+            const html = `<div class="message-group"><div class="avatar" style="background-image: url('${agent.avatar}')"></div><div class="message-content"><div class="agent-name">${agent.name}</div><div class="bubble" id="${bubbleId}"><span style="animation:blink 1s infinite">_</span></div></div></div>`;
+            chatArena.insertAdjacentHTML('beforeend', html);
+            scrollToBottom();
+            return document.getElementById(bubbleId);
         }
 
         function scrollToBottom() { chatArena.scrollTop = chatArena.scrollHeight; }
-
-        // ✅ 带有日志过滤功能的 API 调用函数
+        
+        // 真实 API 调用 (适配 V3 过滤)
         async function simulateCozeAPIStream(agentId, prompt, onChunk) {
             const agent = agents.find(a => a.id === agentId);
-            console.log(`[${agent.name}] 连接中...`);
+            if(!agent || !agent.botId) return;
 
             try {
                 const response = await fetch('/api/chat', {
@@ -261,56 +332,31 @@
                         conversation_id: "debate_" + Date.now()
                     })
                 });
-
-                if (!response.ok) {
-                    onChunk(" **[API连接错误]** ");
-                    return;
-                }
-
+                
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
-                let buffer = '';
 
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
+                    const chunk = decoder.decode(value, { stream: true });
+                    const lines = chunk.split('\n');
                     
-                    buffer += decoder.decode(value, { stream: true });
-                    const lines = buffer.split('\n');
-                    buffer = lines.pop();
-
                     for (const line of lines) {
                         if (line.startsWith('data:') && line.length > 5) {
                             try {
-                                const rawJson = line.slice(5).trim();
-                                if (rawJson === '[DONE]') continue;
-
-                                const data = JSON.parse(rawJson);
-                                
-                                // 🛑 核心过滤：只允许 type 为 'answer' 的消息通过！
-                                if (
-                                    data.event === 'conversation.message.delta' && 
-                                    data.message && 
-                                    data.message.content &&
-                                    data.message.type === 'answer' 
-                                ) {
-                                    const content = data.message.content;
-                                    // 双重保险
-                                    if (!content.trim().startsWith('{')) {
-                                        onChunk(content);
-                                    }
+                                const data = JSON.parse(line.slice(5));
+                                if (data.event === 'conversation.message.delta' && data.message?.content) {
+                                    onChunk(data.message.content);
                                 }
                             } catch (e) {}
                         }
                     }
                 }
             } catch (err) {
-                console.error("Stream Error:", err);
-                onChunk(" **[网络连接中断]** ");
+                onChunk(" **[API连接错误]** ");
             }
         }
     </script>
 </body>
 </html>
-        }
-
