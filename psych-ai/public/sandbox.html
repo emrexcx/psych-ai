@@ -5,19 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>潜意识沙盘 - 沉浸体验</title>
     <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         body {
             margin: 0; height: 100vh;
             font-family: 'Zen Maru Gothic', sans-serif;
             color: #4a4a4a;
             
-            /* --- 背景图片设置 (核心修改) --- */
-            background-color: #d7ccc8; /* 图片加载前的底色 */
-            
-            /* 优先加载本地图片 images/sandbox_bg.jpg */
-            /* 如果本地没找到，会加载后面的 Unsplash 在线图作为保底 */
+            /* 背景设置 */
+            background-color: #d7ccc8;
             background-image: url('images/sandbox_bg.jpg'), url('https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?q=80&w=2070');
-            
             background-size: cover; 
             background-position: center;
             background-repeat: no-repeat;
@@ -26,7 +23,6 @@
             overflow: hidden;
         }
 
-        /* 全屏遮罩：加深一点点背景，让中间的玻璃板更明显 */
         body::before {
             content: ''; position: absolute; inset: 0;
             background: radial-gradient(circle, rgba(0,0,0,0) 0%, rgba(0,0,0,0.4) 100%);
@@ -36,7 +32,6 @@
         /* --- 悬浮的主面板 --- */
         #sandbox-panel {
             width: 90%; max-width: 550px; height: 85vh;
-            /* 磨砂玻璃效果 */
             background: rgba(255, 255, 255, 0.75);
             backdrop-filter: blur(12px) saturate(180%);
             -webkit-backdrop-filter: blur(12px) saturate(180%);
@@ -44,7 +39,7 @@
             border-radius: 24px;
             border: 1px solid rgba(255, 255, 255, 0.6);
             box-shadow: 
-                0 30px 60px rgba(0,0,0,0.3), /* 更强的投影，增加悬浮感 */
+                0 30px 60px rgba(0,0,0,0.3),
                 inset 0 0 0 1px rgba(255,255,255,0.4);
             
             display: flex; flex-direction: column;
@@ -63,7 +58,6 @@
         .header h1 { margin: 0; font-size: 18px; color: #333; letter-spacing: 4px; font-weight: bold; }
         .header p { margin: 5px 0 0; font-size: 12px; color: #666; }
         
-        /* 返回按钮 */
         .home-btn {
             position: absolute; left: 20px; top: 50%; transform: translateY(-50%);
             text-decoration: none; color: #666; font-size: 14px; transition: 0.3s;
@@ -77,7 +71,7 @@
             display: flex; flex-direction: column; gap: 20px;
             scroll-behavior: smooth;
         }
-        #chat-box::-webkit-scrollbar { width: 0; } /* 隐藏滚动条 */
+        #chat-box::-webkit-scrollbar { width: 0; }
 
         .msg {
             max-width: 85%; padding: 15px 20px; border-radius: 18px;
@@ -85,13 +79,17 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
         
-        /* Bot: 白色气泡 */
+        /* Bot 样式 */
         .bot-msg {
             align-self: flex-start; background: #fff; color: #444;
             border-bottom-left-radius: 4px;
         }
+        /* 图片样式修正 */
+        .bot-msg img { max-width: 100%; border-radius: 10px; margin-top: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .bot-msg p { margin: 0 0 10px 0; }
+        .bot-msg p:last-child { margin-bottom: 0; }
         
-        /* User: 沙色气泡 (配合你的图片色调) */
+        /* User 样式 */
         .user-msg {
             align-self: flex-end; background: #8d6e63; color: #fff;
             border-bottom-right-radius: 4px;
@@ -157,7 +155,7 @@
 </div>
 
 <script>
-    // ⚠️⚠️⚠️ 替换为你的沙盘 Bot ID ⚠️⚠️⚠️
+    // ⚠️⚠️⚠️ 你的沙盘 Bot ID (请确认这里是对的) ⚠️⚠️⚠️
     const SANDBOX_BOT_ID = '7574847485391929396'; 
 
     const chatBox = document.getElementById('chat-box');
@@ -169,14 +167,11 @@
         const text = userInput.value.trim();
         if(!text) return;
 
-        // 1. 显示用户消息
         addMessage(text, 'user');
         userInput.value = '';
 
-        // 2. 显示 Bot 思考中
         const loadingId = addMessage('<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>', 'bot');
 
-        // 3. 调用后端 API
         let fullResponse = "";
         try {
             const response = await fetch('/api/chat', {
@@ -192,7 +187,6 @@
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             
-            // 清空 loading 动画
             const loadingBubble = document.getElementById(loadingId);
             loadingBubble.innerHTML = ''; 
 
@@ -205,10 +199,26 @@
                 for (const line of lines) {
                     if (line.startsWith('data:') && line.length > 5) {
                         try {
-                            const data = JSON.parse(line.slice(5));
+                            const rawJson = line.slice(5).trim();
+                            if (rawJson === '[DONE]') continue;
+
+                            const data = JSON.parse(rawJson);
+                            
+                            // 🛑 核心修复：只允许 'answer' 类型
                             if (data.event === 'conversation.message.delta' && data.message && data.message.content) {
-                                fullResponse += data.message.content;
-                                loadingBubble.innerHTML = fullResponse.replace(/\n/g, '<br>');
+                                // 1. 过滤掉工具调用的中间状态 (比如正在生成图片时的日志)
+                                if (data.message.type && data.message.type !== 'answer') continue;
+
+                                const content = data.message.content;
+                                
+                                // 2. 过滤掉 JSON 格式的日志
+                                if (content.trim().startsWith('{') && (content.includes('"msg_type"') || content.includes('"plugin_id"'))) {
+                                    continue; 
+                                }
+
+                                fullResponse += content;
+                                // 🟢 3. 使用 Marked 解析 (这样图片 URL 就会变成真正的图片)
+                                loadingBubble.innerHTML = marked.parse(fullResponse);
                                 chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
                             }
                         } catch(e) {}
@@ -217,6 +227,7 @@
             }
         } catch (err) {
             document.getElementById(loadingId).innerHTML = " [连接似乎断开了，请检查网络] ";
+            console.error(err);
         }
     }
 
