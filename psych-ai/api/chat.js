@@ -1,291 +1,109 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>心理学流派大乱斗 - 核心中枢</title>
-    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <style>
-        /* --- 1. 全局变量 --- */
-        :root {
-            --neon-purple: #bd00ff;
-            --neon-blue: #0066ff;
-            --neon-cyan: #00eaff;
-            --bg-dark: #000205;
-        }
+export const config = {
+  runtime: 'edge',
+};
 
-        body {
-            font-family: 'Share Tech Mono', monospace, sans-serif;
-            background-color: var(--bg-dark);
-            color: #fff;
-            margin: 0;
-            height: 100vh;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
+export default async function handler(req) {
+  // 1. 安全检查
+  if (req.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
 
-        /* 背景特效 */
-        .cyber-floor {
-            position: absolute; top: 50%; left: 50%; width: 200vw; height: 200vh;
-            transform: translate(-50%, -50%) rotateX(60deg);
-            background-image: 
-                linear-gradient(rgba(0, 102, 255, 0.3) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 102, 255, 0.3) 1px, transparent 1px);
-            background-size: 50px 50px;
-            z-index: 0; animation: gridMove 20s linear infinite;
-            mask-image: linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 80%);
-        }
-        @keyframes gridMove { 100% { background-position: 0 500px; } }
+  try {
+    const { query, bot_id } = await req.json();
+    const COZE_API_KEY = process.env.COZE_API_KEY;
 
-        /* --- 主容器 --- */
-        #app-container {
-            position: relative; z-index: 10;
-            width: 90%; max-width: 850px; height: 90vh;
-            background: rgba(0, 5, 15, 0.75);
-            backdrop-filter: blur(10px);
-            display: flex; flex-direction: column;
-            border: 1px solid rgba(0, 234, 255, 0.3);
-            border-radius: 12px; overflow: hidden;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-        }
+    if (!COZE_API_KEY) {
+      return new Response(JSON.stringify({ error: "API Key 未配置" }), { status: 500 });
+    }
 
-        /* --- 头部 --- */
-        .header {
-            padding: 20px; background: rgba(0,0,0,0.4);
-            border-bottom: 1px solid rgba(0, 234, 255, 0.2);
-            display: flex; justify-content: center; align-items: center;
-            position: relative;
-        }
-        .header h1 {
-            margin: 0; font-size: 24px; letter-spacing: 2px;
-            text-shadow: 0 0 10px var(--neon-blue);
-        }
+    // 2. 发送 Coze V3 请求
+    const response = await fetch('https://api.coze.cn/v3/chat', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${COZE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        bot_id: bot_id,
+        user_id: "web_user_" + Date.now(), // 随机用户ID，防止串台
+        stream: true,
+        auto_save_history: true,
+        additional_messages: [
+          {
+            role: "user",
+            content: query,
+            content_type: "text"
+          }
+        ]
+      }),
+    });
 
-        /* 按钮样式 */
-        .nav-btn {
-            position: absolute; text-decoration: none; font-size: 12px;
-            padding: 6px 12px; border-radius: 4px; transition: 0.3s;
-            background: rgba(0,0,0,0.5);
-        }
-        .home-btn {
-            left: 20px; border: 1px solid var(--neon-blue); color: var(--neon-blue);
-        }
-        .home-btn:hover { background: var(--neon-blue); color: #fff; box-shadow: 0 0 10px var(--neon-blue); }
-        
-        .switch-btn {
-            right: 20px; border: 1px solid var(--neon-cyan); color: var(--neon-cyan);
-        }
-        .switch-btn:hover { background: var(--neon-cyan); color: #000; box-shadow: 0 0 10px var(--neon-cyan); }
+    if (!response.ok) {
+      const err = await response.text();
+      return new Response(JSON.stringify({ error: err }), { status: response.status });
+    }
 
-        /* --- 聊天区 --- */
-        #chat-arena {
-            flex: 1; overflow-y: auto; padding: 20px;
-            display: flex; flex-direction: column; gap: 20px;
-        }
+    // 3. 智能流式处理
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
 
-        /* 消息气泡 */
-        .message-group { display: flex; align-items: flex-start; }
-        .avatar {
-            width: 40px; height: 40px; border-radius: 50%; margin-right: 15px; flex-shrink: 0;
-            background-size: cover; border: 2px solid #fff; box-shadow: 0 0 10px var(--neon-blue);
-        }
-        .message-content { max-width: 85%; }
-        .agent-name { font-size: 12px; color: var(--neon-cyan); margin-bottom: 5px; }
-        
-        .bubble {
-            padding: 15px; background: rgba(0, 10, 30, 0.8);
-            border: 1px solid var(--neon-blue); color: #e0f7ff;
-            border-radius: 0 15px 15px 15px; 
-            line-height: 1.5;
-            word-wrap: break-word;
-        }
+    const stream = new ReadableStream({
+      async start(controller) {
+        const reader = response.body.getReader();
+        let buffer = "";
 
-        /* ✅ Markdown 样式修正 (防止Markdown默认样式在黑底看不清) */
-        .bubble p { margin: 0 0 10px 0; }
-        .bubble p:last-child { margin-bottom: 0; }
-        .bubble strong { color: var(--neon-cyan); font-weight: bold; }
-        .bubble em { color: var(--neon-purple); font-style: italic; }
-        .bubble ul, .bubble ol { margin: 5px 0; padding-left: 20px; }
-        .bubble code { background: rgba(255,255,255,0.1); padding: 2px 4px; border-radius: 3px; font-family: monospace; }
-
-        /* 用户消息 */
-        .message-group.user { flex-direction: row-reverse; }
-        .message-group.user .avatar { margin-right: 0; margin-left: 15px; border-color: var(--neon-purple); box-shadow: 0 0 10px var(--neon-purple); }
-        .message-group.user .bubble {
-            background: rgba(20, 0, 20, 0.8); border-color: var(--neon-purple);
-            border-radius: 15px 0 15px 15px;
-        }
-        .message-group.user .agent-name { text-align: right; color: var(--neon-purple); }
-
-        /* --- 输入区 --- */
-        .input-area {
-            padding: 20px; background: rgba(0,0,0,0.8);
-            border-top: 1px solid rgba(0, 234, 255, 0.3);
-            display: flex; gap: 10px;
-        }
-        #user-input {
-            flex: 1; padding: 12px; background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(0, 234, 255, 0.3); color: var(--neon-cyan);
-            outline: none; font-family: inherit;
-        }
-        #send-btn {
-            padding: 0 25px; cursor: pointer;
-            background: linear-gradient(135deg, var(--neon-blue), var(--neon-purple));
-            border: none; color: #fff; font-weight: bold;
-        }
-
-        /* 移动端适配 */
-        @media (max-width: 600px) {
-            .header h1 { font-size: 16px; }
-            .nav-btn { position: relative; left: auto; right: auto; font-size: 10px; padding: 4px 8px; }
-            .header { justify-content: space-between; gap: 5px; }
-        }
-    </style>
-</head>
-<body>
-
-    <div class="cyber-floor"></div>
-
-    <div id="app-container">
-        <div class="header">
-            <a href="index.html" class="nav-btn home-btn">↩ 返回主页</a>
-            <h1>NEON DEBATE</h1>
-            <a href="experience.html" class="nav-btn switch-btn">➜ 深度会诊</a>
-        </div>
-
-        <div id="chat-arena">
-            <div style="text-align:center; margin-top:100px; color:#fff; opacity:0.7;">
-                SYSTEM READY...
-            </div>
-        </div>
-
-        <div class="input-area">
-            <input type="text" id="user-input" placeholder="输入辩题..." onkeypress="handleKeyPress(event)">
-            <button id="send-btn" onclick="startBrawl()">发送</button>
-        </div>
-    </div>
-
-    <script>
-        // 配置
-        const agents = [
-            { id: 'freud', name: '弗洛伊德', botId: '7576937790106402857', avatar: 'images/freud.png' },
-            { id: 'jung', name: '荣格', botId: '7576939753841508378', avatar: 'images/jung.png' },
-            { id: 'adler', name: '阿德勒', botId: '7576940585882550326', avatar: 'images/adler.png' },
-            { id: 'contemporary', name: '当代动力', botId: '7576941130223255578', avatar: 'images/contemp.png' }
-        ];
-
-        // 状态存储（用于累积文本进行Markdown渲染）
-        let agentBuffers = {};
-
-        const chatArena = document.getElementById('chat-arena');
-        const userInput = document.getElementById('user-input');
-        const sendBtn = document.getElementById('send-btn');
-
-        function handleKeyPress(e) { if (e.key === 'Enter') startBrawl(); }
-
-        async function startBrawl() {
-            const query = userInput.value.trim();
-            if (!query) return;
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
             
-            // UI 重置
-            userInput.value = ''; 
-            sendBtn.disabled = true;
-            document.querySelector('#chat-arena > div').style.display = 'none'; // 隐藏 placeholder
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop(); // 保留末尾不完整片段
 
-            // 1. 显示用户消息
-            addMessage('user', 'OPERATOR', query);
+            for (const line of lines) {
+              if (line.trim().startsWith('data:')) {
+                try {
+                  // 去掉 'data:' 前缀
+                  const jsonStr = line.replace(/^data:\s*/, '').trim();
+                  if (!jsonStr) continue;
+                  
+                  const data = JSON.parse(jsonStr);
 
-            // 2. 初始化所有专家的气泡
-            const bubbleElements = {};
-            agents.forEach(agent => {
-                // 清空该专家的缓存
-                agentBuffers[agent.id] = ''; 
-                // 创建气泡并保存 DOM 引用
-                bubbleElements[agent.id] = addMessage('agent', agent.name, '<span class="cursor">_</span>', agent.avatar);
-            });
+                  // 🟢 核心过滤区：只放行真正的回答 🟢
+                  // event: conversation.message.delta  -> 代表正在打字
+                  // type: answer                       -> 代表是Bot的回答(不是工具/不是建议)
+                  if (data.event === 'conversation.message.delta' && data.type === 'answer') {
+                     const content = data.content;
+                     
+                     // 🧹 垃圾清理：如果包含卡片代码，直接跳过
+                     if (content.includes('card_type') || content.includes('template_url')) {
+                         continue; 
+                     }
 
-            const debatePrompt = `【辩论指令：简短、犀利、反驳他人。50字内。】用户：${query}`;
-
-            // 3. 并发调用 API
-            const tasks = agents.map(agent => simulateCozeAPIStream(agent.id, debatePrompt, (chunk) => {
-                // ✅ 核心修改：累积文本 -> 解析Markdown -> 更新HTML
-                agentBuffers[agent.id] += chunk;
-                const html = marked.parse(agentBuffers[agent.id]);
-                bubbleElements[agent.id].innerHTML = html;
-                scrollToBottom();
-            }));
-
-            await Promise.all(tasks);
-            sendBtn.disabled = false;
-        }
-
-        // 添加消息到界面
-        function addMessage(type, name, content, avatarUrl) {
-            const isUser = type === 'user';
-            const avatar = isUser ? 'https://placehold.co/100/bd00ff/fff?text=OP' : avatarUrl;
-            
-            const html = `
-                <div class="message-group ${type}">
-                    <div class="avatar" style="background-image: url('${avatar}')"></div>
-                    <div class="message-content">
-                        <div class="agent-name">${name}</div>
-                        <div class="bubble">${content}</div>
-                    </div>
-                </div>`;
-            
-            chatArena.insertAdjacentHTML('beforeend', html);
-            scrollToBottom();
-            // 返回最新添加的 bubble 元素用于后续更新
-            const bubbles = chatArena.querySelectorAll('.bubble');
-            return bubbles[bubbles.length - 1];
-        }
-
-        function scrollToBottom() { chatArena.scrollTop = chatArena.scrollHeight; }
-
-        // ✅ 真实 API 调用 (保持不变，已符合要求)
-        async function simulateCozeAPIStream(agentId, prompt, onChunk) {
-            const agent = agents.find(a => a.id === agentId);
-            try {
-                const response = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        query: prompt,
-                        bot_id: agent.botId,
-                        conversation_id: "debate_" + Date.now()
-                    })
-                });
-
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-                let buffer = '';
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    buffer += decoder.decode(value, { stream: true });
-                    const lines = buffer.split('\n');
-                    buffer = lines.pop();
-
-                    for (const line of lines) {
-                        if (line.startsWith('data:') && line.length > 5) {
-                            try {
-                                const data = JSON.parse(line.slice(5));
-                                if (data.event === 'conversation.message.delta' && data.message?.content) {
-                                    onChunk(data.message.content);
-                                }
-                            } catch (e) {}
-                        }
-                    }
-                }
-            } catch (err) {
-                console.error(err);
-                onChunk(" **[信号中断]** ");
+                     // 📦 打包发给前端
+                     const msg = JSON.stringify({
+                         event: 'conversation.message.delta',
+                         message: { content: content }
+                     });
+                     controller.enqueue(encoder.encode(`data: ${msg}\n\n`));
+                  }
+                  
+                  // 注：这里故意不处理 completed 事件，防止重复！
+                  
+                } catch (e) { /* 忽略非 JSON 行 */ }
+              }
             }
+          }
+        } catch (err) {
+          console.error("Stream Error:", err);
+        } finally {
+          controller.close();
         }
-    </script>
-</body>
-</html>
+      }
+    });
+
+    return new Response(stream, { headers: { 'Content-Type': 'text/event-stream' } });
+
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+  }
+}
