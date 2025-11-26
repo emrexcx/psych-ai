@@ -103,7 +103,7 @@
             word-wrap: break-word;
         }
 
-        /* ✅ Markdown 样式修正 (防止Markdown默认样式在黑底看不清) */
+        /* ✅ Markdown 样式修正 */
         .bubble p { margin: 0 0 10px 0; }
         .bubble p:last-child { margin-bottom: 0; }
         .bubble strong { color: var(--neon-cyan); font-weight: bold; }
@@ -169,13 +169,13 @@
     </div>
 
     <script>
-        // 配置
+        // 配置 (已修复语法错误)
         const agents = [
             { id: 'freud', name: '弗洛伊德', botId: '7576937790106402857', avatar: 'images/freud.png' },
             { id: 'jung', name: '荣格', botId: '7576939753841508378', avatar: 'images/jung.png' },
             { id: 'adler', name: '阿德勒', botId: '7576940585882550326', avatar: 'images/adler.png' },
-            { id: 'contemporary', name: '当代动力', botId: '7576941130223255578', avatar: 'images/contemp.png' }
-            { id: 'narrative', name: '叙事治疗', botId: '7576941141384544262', avatar: 'narrative.png'}
+            { id: 'contemporary', name: '当代动力', botId: '7576941130223255578', avatar: 'images/contemp.png' }, // 🟢 加了逗号
+            { id: 'narrative', name: '叙事治疗', botId: '7576941141384544262', avatar: 'images/narrative.png' } // 🟢 修正了图片路径
         ];
 
         // 状态存储（用于累积文本进行Markdown渲染）
@@ -262,14 +262,12 @@
 
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
-                let buffer = '';
 
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
-                    buffer += decoder.decode(value, { stream: true });
-                    const lines = buffer.split('\n');
-                    buffer = lines.pop();
+                    const chunk = decoder.decode(value, { stream: true });
+                    const lines = chunk.split('\n');
 
                     for (const line of lines) {
                         if (line.startsWith('data:') && line.length > 5) {
@@ -289,5 +287,4 @@
         }
     </script>
 </body>
-
 </html>
