@@ -280,11 +280,16 @@
         // ✅ 核心功能：带过滤的 API 调用
         async function simulateCozeAPIStream(agentId, prompt, onChunk) {
             const agent = agents.find(a => a.id === agentId);
+            
             try {
                 const response = await fetch('/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query: prompt, bot_id: agent.botId, conversation_id: "debate_" + Date.now() })
+                    body: JSON.stringify({
+                        query: prompt,
+                        bot_id: agent.botId,
+                        conversation_id: "debate_" + Date.now()
+                    })
                 });
 
                 const reader = response.body.getReader();
@@ -303,23 +308,34 @@
                                 const rawJson = line.slice(5).trim();
                                 if (rawJson === '[DONE]') continue;
                                 const data = JSON.parse(rawJson);
-                                
-                                // 🟢 宽容模式过滤
-                                if (data.message && data.message.content) {
-                                    const content = data.message.content;
-                                    // 拦截代码日志
-                                    if (!content.trim().startsWith('{')) {
-                                        onChunk(content);
-                                    }
+
+                                // ✂️ 剪刀 1：只允许 "增量" (delta) 消息
+                                // (这能完美解决 "说话重复" 的问题，因为 completed 事件会被拦住)
+                                if (data.event !== 'conversation.message.delta') continue;
+
+                                // 🛡️ 基础检查：必须有内容
+                                if (!data.message || !data.message.content) continue;
+
+                                const content = data.message.content;
+                                const type = data.message.type;
+
+                                // ✂️ 剪刀 2：剪掉 "建议追问" (follow_up)
+                                // (这能解决最后出现 "如何应对焦虑..." 这种奇怪问题的情况)
+                                if (type === 'follow_up') continue;
+
+                                // 🛡️ 过滤器：拦截代码日志
+                                if (content.trim().startsWith('{') && (content.includes('"msg_type"') || content.includes('"plugin_id"'))) {
+                                    continue; 
                                 }
+
+                                // 🎉 通过所有检查，上屏！
+                                onChunk(content);
+
                             } catch (e) {}
                         }
                     }
                 }
             } catch (err) {
-                onChunk(" [网络中断] ");
+                onChunk(" [连接中断] ");
             }
         }
-    </script>
-</body>
-</html>
