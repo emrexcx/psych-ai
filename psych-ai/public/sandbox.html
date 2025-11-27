@@ -21,7 +21,6 @@
             background: radial-gradient(circle, rgba(0,0,0,0) 0%, rgba(0,0,0,0.4) 100%);
             pointer-events: none; z-index: -1;
         }
-
         #sandbox-panel {
             width: 90%; max-width: 550px; height: 85vh;
             background: rgba(255, 255, 255, 0.85);
@@ -32,43 +31,34 @@
             animation: floatUp 0.8s ease;
         }
         @keyframes floatUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-
         .header { padding: 20px; text-align: center; border-bottom: 1px solid rgba(0,0,0,0.05); position: relative; }
         .header h1 { margin: 0; font-size: 18px; color: #333; letter-spacing: 4px; }
         .header p { margin: 5px 0 0; font-size: 12px; color: #666; }
-        
         .home-btn {
             position: absolute; left: 20px; top: 50%; transform: translateY(-50%);
             text-decoration: none; color: #666; font-size: 14px; border: 1px solid #999; 
             padding: 4px 10px; border-radius: 20px; transition: 0.3s;
         }
         .home-btn:hover { background: #333; color: #fff; }
-
         #chat-box {
             flex: 1; overflow-y: auto; padding: 25px;
             display: flex; flex-direction: column; gap: 20px; scroll-behavior: smooth;
         }
         #chat-box::-webkit-scrollbar { width: 0; }
-
         .msg {
             max-width: 85%; padding: 15px 20px; border-radius: 18px;
             line-height: 1.6; font-size: 15px; position: relative;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
         .bot-msg { align-self: flex-start; background: #fff; color: #444; border-bottom-left-radius: 4px; }
-        /* ✅ 图片样式：保证图片不会撑破气泡 */
-        .bot-msg img { 
-            max-width: 100%; border-radius: 12px; margin-top: 10px; 
-            display: block; box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
-        }
+        .bot-msg img { max-width: 100%; border-radius: 12px; margin-top: 10px; display: block; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
         .bot-msg p { margin: 0 0 10px 0; } .bot-msg p:last-child { margin-bottom: 0; }
-
         .user-msg { align-self: flex-end; background: #8d6e63; color: #fff; border-bottom-right-radius: 4px; }
-
         .input-area { padding: 20px; background: rgba(255,255,255,0.5); display: flex; gap: 10px; border-top: 1px solid rgba(255,255,255,0.3); }
         input { flex: 1; padding: 15px; border: none; border-radius: 12px; background: rgba(255,255,255,0.8); outline: none; font-family: inherit; color: #333; }
         input:focus { background: #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         button { width: 50px; height: 50px; border-radius: 12px; border: none; background: #5d4037; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
         button svg { width: 24px; height: 24px; fill: currentColor; }
     </style>
 </head>
@@ -91,7 +81,7 @@
 
     <div class="input-area">
         <input type="text" id="user-input" placeholder="描述你的画面..." onkeypress="handleKey(event)">
-        <button onclick="sendMessage()">
+        <button id="send-btn" onclick="sendMessage()">
             <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
         </button>
     </div>
@@ -103,6 +93,7 @@
 
     const chatBox = document.getElementById('chat-box');
     const userInput = document.getElementById('user-input');
+    const sendBtn = document.getElementById('send-btn');
 
     function handleKey(e) { if(e.key === 'Enter') sendMessage(); }
 
@@ -110,6 +101,7 @@
         const text = userInput.value.trim();
         if(!text) return;
 
+        sendBtn.disabled = true;
         addMessage(text, 'user');
         userInput.value = '';
 
@@ -148,32 +140,35 @@
 
                             const data = JSON.parse(rawJson);
                             
-                            // ✂️ 只看 "delta" (正在打字)
+                            // ✂️ 核心修改：只看 delta (打字)，不看 completed (总结)
+                            // 这样可以避免重复
                             if (data.event === 'conversation.message.delta' && data.message && data.message.content) {
-                                let content = data.message.content;
                                 
-                                // 🌟🌟🌟 核心升级：图片数据解析 🌟🌟🌟
-                                // 如果内容以 '[' 开头，说明是多模态数据（包含图片），我们手动把它转成 Markdown！
+                                // 🚫 拦截 "追问" (follow_up)
+                                if (data.message.type === 'follow_up') continue;
+
+                                let content = data.message.content;
+
+                                // 🟢 允许图片数据包 (以 [ 开头)
                                 if (content.trim().startsWith('[')) {
                                     try {
                                         const items = JSON.parse(content);
                                         let parsedContent = "";
                                         items.forEach(item => {
                                             if(item.type === 'text') parsedContent += item.text;
-                                            // 把图片对象转成 Markdown 图片语法
-                                            if(item.type === 'image') parsedContent += `\n![沙盘图片](${item.file_url})\n`;
+                                            if(item.type === 'image') parsedContent += `\n\n![沙盘](${item.file_url})\n\n`;
                                         });
                                         content = parsedContent;
-                                    } catch(e) {
-                                        // 如果解析失败，可能是普通的文字碰巧以 [ 开头，忽略
-                                    }
+                                    } catch(e) {}
                                 }
                                 
-                                // 🛡️ 过滤器：只有当它确实是“垃圾代码”时才拦截
-                                // 注意：我们现在允许 '[' 开头了（因为上面处理过了），只拦截 '{' 开头的日志
+                                // 🛡️ 强力过滤 JSON/代码日志
+                                // 只要看到这些特征，统统拦截，不管它是什么 type
                                 if (
                                     content.trim().startsWith('{') || 
                                     content.includes('"msg_type"') || 
+                                    content.includes('"code":') || 
+                                    content.includes('"data":') ||
                                     content.includes('INSERT INTO')
                                 ) {
                                     continue; 
@@ -189,6 +184,8 @@
             }
         } catch (err) {
             document.getElementById(loadingId).innerHTML = " [网络连接中断] ";
+        } finally {
+            sendBtn.disabled = false;
         }
     }
 
