@@ -58,7 +58,7 @@
 </div>
 
 <script>
-    // ⚠️⚠️⚠️ 你的沙盘 Bot ID ⚠️⚠️⚠️
+    // ⚠️⚠️⚠️ 你的沙盘 Bot ID (保持你原来的 ID) ⚠️⚠️⚠️
     const SANDBOX_BOT_ID = '7574847485391929396'; 
     let conversationId = "sandbox_" + Date.now(); // 初始化会话 ID
 
@@ -76,6 +76,7 @@
         addMessage(text, 'user');
         userInput.value = '';
 
+        // 创建机器人回复的气泡
         const loadingId = addMessage('<span style="color:#aaa">...沙盘构建中...</span>', 'bot');
         let fullResponse = "";
         
@@ -86,7 +87,8 @@
                 body: JSON.stringify({
                     query: text,
                     bot_id: SANDBOX_BOT_ID,
-                    conversation_id: conversationId // 发送会话 ID
+                    conversation_id: conversationId,
+                    stream: true // 确保开启流式传输
                 })
             });
 
@@ -112,37 +114,33 @@
                             // ✂️ 只处理 delta 类型的消息
                             if (data.event === 'conversation.message.delta' && data.message) {
                                 
-                                // 🚫 1. 坚决屏蔽 "追问"
+                                // 🚫 1. 屏蔽 "追问" (可选)
                                 if (data.message.type === 'follow_up') continue;
 
                                 let content = data.message.content;
                                 if (!content) continue;
                                 
-                                // 🛡️ 2. 垃圾代码拦截 (黑名单)
-                                // 拦截以 { 开头且不是多模态数组的消息，以及明显的代码特征
+                                // 🛡️ 2. 仅拦截明显的非对话指令
+                                // (已移除对 '{' 的拦截，防止误杀 JSON 格式的回复)
                                 if (
-                                    (content.trim().startsWith('{') && !content.trim().startsWith('[')) || 
-                                    content.includes('"msg_type"') || 
                                     content.includes('FunctionCall') || 
                                     content.includes('INSERT INTO')
                                 ) {
                                     continue; 
                                 }
 
-                                // 🛠️ 3. 图片链接急救
-                                // 如果发现是 Coze 的图片链接，且没有被 markdown 包裹，手动包裹起来
-                                if (content.includes('s.coze.cn') && !content.includes('![')) {
-                                    content = `\n\n![沙盘](${content})\n\n`;
-                                }
-
+                                // ✅ 3. 直接拼接内容 (不做任何图片特殊处理)
+                                // Coze 返回的已经是标准的 markdown 图片格式，marked.js 会自动识别
                                 fullResponse += content;
-                                // 使用 marked解析 markdown 并更新内容
+
+                                // 解析 Markdown 并实时渲染
                                 loadingBubble.innerHTML = marked.parse(fullResponse);
+                                
+                                // 自动滚动到底部
                                 chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
                             }
                         } catch(e) {
-                            // 忽略 JSON 解析错误，避免崩坏
-                            console.warn("JSON Parse Error (ignored):", e);
+                            console.warn("Stream Parse Error (ignored):", e);
                         }
                     }
                 }
@@ -168,3 +166,4 @@
 </script>
 </body>
 </html>
+
