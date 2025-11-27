@@ -26,7 +26,7 @@
         .expert-info span { font-size: 12px; color: #8898aa; font-weight: 500; }
         .card-freud { border-top: 4px solid #e74c3c; } .card-jung { border-top: 4px solid #9b59b6; } .card-adler { border-top: 4px solid #f39c12; } .card-contemp { border-top: 4px solid #20c997; } .card-narrative { border-top: 4px solid #3498db; }
         
-        /* 🟢 修复后的内容区域样式 */
+        /* 内容样式 */
         .diagnosis-area { 
             flex: 1; 
             padding: 20px; 
@@ -35,19 +35,20 @@
             color: #374151; 
             overflow-y: auto; 
             background-color: #fff; 
-            /* 关键：防止长链接撑破布局 */
             word-wrap: break-word; 
-            word-break: break-word;
         }
         
-        /* Markdown 元素样式 */
+        /* 🟢 强制样式：修复 b 标签和列表 */
+        .diagnosis-area b, .diagnosis-area strong { 
+            color: #000; 
+            font-weight: 900 !important; 
+            background: rgba(255, 243, 205, 0.5); /* 淡黄底色 */
+            padding: 0 2px;
+            border-radius: 2px;
+        }
+        .diagnosis-area ul, .diagnosis-area ol { padding-left: 20px; margin: 8px 0; }
+        .diagnosis-area li { margin-bottom: 6px; }
         .diagnosis-area p { margin-bottom: 10px; margin-top: 0; }
-        .diagnosis-area strong { color: #000; font-weight: 700; background: rgba(0,0,0,0.04); padding: 0 3px; border-radius: 3px; }
-        .diagnosis-area ul, .diagnosis-area ol { padding-left: 20px; margin: 10px 0; }
-        .diagnosis-area li { margin-bottom: 5px; }
-        .diagnosis-area blockquote { border-left: 3px solid #e5e7eb; padding-left: 10px; color: #666; margin: 10px 0; font-style: italic; }
-        /* 隐藏掉没清理干净的空链接 */
-        .diagnosis-area a:empty { display: none; }
 
         .input-wrapper { background: #fff; padding: 20px; border-top: 1px solid #e1e8ed; display: flex; justify-content: center; }
         .input-group { width: 100%; max-width: 900px; display: flex; gap: 15px; }
@@ -75,11 +76,8 @@
     </div>
 
 <script>
-    // 🟢 配置 Marked
-    marked.use({
-        breaks: true, // 允许回车换行
-        gfm: true
-    });
+    // Marked 配置
+    marked.use({ breaks: true, gfm: true });
 
     const agents = [
         { id: 'freud', name: 'S. Freud', title: '精神分析', theme: 'card-freud', botId: '7576937790106402857', avatar: 'images/freud2.png' },
@@ -117,31 +115,28 @@
 
     function handleKeyPress(event) { if (event.key === 'Enter') startConsultation(); }
 
-    // 🟢 2. 强力清洗函数 (针对截图中的乱码)
+    // 🟢 2. 暴力清洗与手动格式化函数
     function cleanAndFormat(text) {
         if (!text) return "";
         let clean = text;
 
-        // 1. 移除 Coze 内部引用和 Knowledge Base 标记
-        // 去除 [therapy_xxx]、[doc_xxx]
+        // --- A. 垃圾清理 ---
+        // 删掉 [1] 这种引用
+        clean = clean.replace(/\[\d+\]/g, "");
+        // 删掉 (section 1) 这种标记
+        clean = clean.replace(/\(section\s*\d+\)/gi, "");
+        // 删掉 Coze 引用和文件
         clean = clean.replace(/\[(therapy|doc|file)_.*?\]/gi, ""); 
-        // 去除 Coze 的引用标记 【xxx†source】
         clean = clean.replace(/【.*?†source】/g, "");
-        
-        // 2. 移除那个超长的蓝色链接 (OceanCloudAPI)
-        // 匹配括号里的链接或裸露链接
-        clean = clean.replace(/\(https?:\/\/.*?oceancloudapi.*?\)/gi, "");
-        clean = clean.replace(/https?:\/\/.*?oceancloudapi[^\s]*/gi, "");
 
-        // 3. 移除截图里看到的 ISBN 号等页脚垃圾信息
-        // 简单暴力：如果一行全是数字或看起来像 ISBN，删掉
-        clean = clean.replace(/\n\s*[\d-]{10,}\s*\n/g, "\n");
+        // --- B. 暴力修复加粗 (直接把 ** 换成 HTML 标签) ---
+        // 逻辑：找到成对的 **，不管中间有没有空格，强制变成 <b>
+        // 1. 先修复 `** 标题 **` 这种带空格的情况，去掉空格
+        clean = clean.replace(/\*\*\s+(.*?)\s+\*\*/g, '**$1**');
+        // 2. 将 `**内容**` 替换为 `<b>内容</b>` (绕过 Markdown 解析器的限制)
+        clean = clean.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
         
-        // 4. 修复加粗格式粘连
-        // 这里的逻辑是：如果 ** 前面没有空格，给它加个空格，避免解析失效
-        clean = clean.replace(/([^\s])(\*\*)/g, '$1 $2');
-
-        // 5. 修复列表格式 (1. 必须在新行)
+        // --- C. 修复列表 (1. 必须在新行) ---
         clean = clean.replace(/([^\n])\s*(\d+\.)/g, '$1\n\n$2');
         clean = clean.replace(/([^\n])\s*([-\*]\s)/g, '$1\n\n$2');
 
@@ -161,8 +156,8 @@
             document.getElementById(`output-${agent.id}`).innerHTML = '<div style="color:#007bff; display:flex; align-items:center; gap:5px;"><i>⏳</i> 正在生成独立报告...</div>';
         });
 
-        // 提示词优化：增加“不要引用来源”的要求
-        const experiencePrompt = `【指令：现在是专业的心理咨询会诊模式。请忽略其他专家的存在，基于你的理论流派，提供一份独立、冷静、深度的分析报告。语气要专业、客观。不要输出引用来源（Sources）、不要输出参考文献列表、不要显示文档ID。】\n\n用户困扰：${query}`;
+        // 提示词：强制要求简洁、无引用
+        const experiencePrompt = `【指令：现在是专业的心理咨询会诊模式。请忽略其他专家的存在，基于你的理论流派，提供一份独立、冷静、深度的分析报告。语气要专业、客观。不要输出引用来源、不要使用参考文献注脚、不要显示(section x)。】\n\n用户困扰：${query}`;
 
         const tasks = agents.map(agent => {
             return simulateCozeAPIStream(agent.botId, experiencePrompt, (chunk) => {
@@ -170,10 +165,11 @@
                 
                 agentResponses[agent.id] += chunk;
                 
-                // 清洗 + 渲染
+                // 执行暴力清洗
                 const cleanText = cleanAndFormat(agentResponses[agent.id]);
                 
                 try {
+                    // 即使 Marked 没识别粗体，上面的 replace 已经把它变成了 <b>，HTML 会直接渲染
                     el.innerHTML = marked.parse(cleanText);
                     el.scrollTop = el.scrollHeight;
                 } catch (e) {
@@ -186,7 +182,7 @@
         btn.disabled = false; btn.innerText = '开始会诊';
     }
 
-    // --- 真实 API 调用 (保持不变) ---
+    // --- API 调用逻辑 (不变) ---
     async function simulateCozeAPIStream(botId, fullPrompt, callback) {
         if(!botId) return;
         try {
@@ -226,6 +222,5 @@
     }
 </script>
 </body>
-</html>
 </html>
 
