@@ -1,4 +1,4 @@
-// api/chat.js (万能兼容版)
+// api/chat.js (修复重复显示版)
 export const config = {
   runtime: 'edge',
 };
@@ -10,7 +10,6 @@ export default async function handler(req) {
     const { query, bot_id, conversation_id } = await req.json();
     const COZE_API_KEY = process.env.COZE_API_KEY;
 
-    // 1. 发送请求
     const response = await fetch('https://api.coze.cn/v3/chat', {
       method: 'POST',
       headers: {
@@ -30,13 +29,13 @@ export default async function handler(req) {
       return new Response(JSON.stringify({ error: "Coze API Error" }), { status: response.status });
     }
 
-    // 2. 宽容流式处理
     const encoder = new TextEncoder();
     const decoder = new TextDecoder();
 
     const stream = new ReadableStream({
       async start(controller) {
         const reader = response.body.getReader();
+        let currentEvent = ''; // 🟢 1. 新增变量：记录当前事件类型
         
         try {
           while (true) {
@@ -47,17 +46,25 @@ export default async function handler(req) {
             const lines = chunk.split('\n');
 
             for (const line of lines) {
-              // 🟢 只要行里有 "content"，就尝试提取，不检查 event 类型
-              if (line.includes('"content"')) {
+              const trimmedLine = line.trim();
+              if (!trimmedLine) continue;
+
+              // 🟢 2. 捕捉 event 类型
+              if (trimmedLine.startsWith('event:')) {
+                currentEvent = trimmedLine.replace('event:', '').trim();
+                continue;
+              }
+
+              // 🟢 3. 只有当事件是 'delta' 时才提取 content
+              // 这样就屏蔽了 'conversation.message.completed' 造成的重复
+              if (currentEvent === 'conversation.message.delta' && line.includes('"content"')) {
                 try {
-                  // 简单粗暴提取 content 内容
                   const jsonStr = line.substring(line.indexOf('{'));
                   const data = JSON.parse(jsonStr);
                   
-                  // 只要有内容就发
                   if (data.content || data.message?.content) {
                      const text = data.content || data.message.content;
-                     // 过滤掉纯代码
+                     // 过滤掉纯代码或其他非文本类型
                      if (text.includes('card_type')) continue;
 
                      const msg = JSON.stringify({
@@ -66,7 +73,9 @@ export default async function handler(req) {
                      });
                      controller.enqueue(encoder.encode(`data: ${msg}\n\n`));
                   }
-                } catch (e) {}
+                } catch (e) {
+                   // 忽略解析错误
+                }
               }
             }
           }
