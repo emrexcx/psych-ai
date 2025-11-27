@@ -38,11 +38,18 @@
             word-wrap: break-word; 
         }
         
-        /* 🟢 强制样式：修复 b 标签和列表 */
+        /* 🟢 核弹级 CSS：强制隐藏所有链接 (a标签) */
+        .diagnosis-area a { 
+            display: none !important; 
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* 强制加粗样式 */
         .diagnosis-area b, .diagnosis-area strong { 
             color: #000; 
             font-weight: 900 !important; 
-            background: rgba(255, 243, 205, 0.5); /* 淡黄底色 */
+            background: rgba(255, 243, 205, 0.5); 
             padding: 0 2px;
             border-radius: 2px;
         }
@@ -76,7 +83,6 @@
     </div>
 
 <script>
-    // Marked 配置
     marked.use({ breaks: true, gfm: true });
 
     const agents = [
@@ -115,28 +121,31 @@
 
     function handleKeyPress(event) { if (event.key === 'Enter') startConsultation(); }
 
-    // 🟢 2. 暴力清洗与手动格式化函数
+    // 🟢 2. 增强版清洗函数
     function cleanAndFormat(text) {
         if (!text) return "";
         let clean = text;
 
-        // --- A. 垃圾清理 ---
-        // 删掉 [1] 这种引用
+        // --- A. 删除 URL 和 引用 ---
+        // 1. 强力删除所有包含 http 的括号内容 (针对截图中的链接)
+        // 使用 [\s\S] 匹配换行符，防止多行链接漏网
+        clean = clean.replace(/\(https?:\/\/[\s\S]*?\)/g, "");
+        
+        // 2. 删除裸露的 URL
+        clean = clean.replace(/https?:\/\/[^\s\)]+/g, "");
+
+        // 3. 删除 Coze 引用
         clean = clean.replace(/\[\d+\]/g, "");
-        // 删掉 (section 1) 这种标记
         clean = clean.replace(/\(section\s*\d+\)/gi, "");
-        // 删掉 Coze 引用和文件
         clean = clean.replace(/\[(therapy|doc|file)_.*?\]/gi, ""); 
         clean = clean.replace(/【.*?†source】/g, "");
 
-        // --- B. 暴力修复加粗 (直接把 ** 换成 HTML 标签) ---
-        // 逻辑：找到成对的 **，不管中间有没有空格，强制变成 <b>
-        // 1. 先修复 `** 标题 **` 这种带空格的情况，去掉空格
+        // --- B. 修复格式 ---
+        // 修复 **粗体**
         clean = clean.replace(/\*\*\s+(.*?)\s+\*\*/g, '**$1**');
-        // 2. 将 `**内容**` 替换为 `<b>内容</b>` (绕过 Markdown 解析器的限制)
         clean = clean.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
         
-        // --- C. 修复列表 (1. 必须在新行) ---
+        // 修复列表
         clean = clean.replace(/([^\n])\s*(\d+\.)/g, '$1\n\n$2');
         clean = clean.replace(/([^\n])\s*([-\*]\s)/g, '$1\n\n$2');
 
@@ -156,20 +165,16 @@
             document.getElementById(`output-${agent.id}`).innerHTML = '<div style="color:#007bff; display:flex; align-items:center; gap:5px;"><i>⏳</i> 正在生成独立报告...</div>';
         });
 
-        // 提示词：强制要求简洁、无引用
-        const experiencePrompt = `【指令：现在是专业的心理咨询会诊模式。请忽略其他专家的存在，基于你的理论流派，提供一份独立、冷静、深度的分析报告。语气要专业、客观。不要输出引用来源、不要使用参考文献注脚、不要显示(section x)。】\n\n用户困扰：${query}`;
+        const experiencePrompt = `【指令：现在是专业的心理咨询会诊模式。请忽略其他专家的存在，基于你的理论流派，提供一份独立、冷静、深度的分析报告。语气要专业、客观。不要输出引用来源、不要使用参考文献注脚、不要显示文档链接。】\n\n用户困扰：${query}`;
 
         const tasks = agents.map(agent => {
             return simulateCozeAPIStream(agent.botId, experiencePrompt, (chunk) => {
                 const el = document.getElementById(`output-${agent.id}`);
                 
                 agentResponses[agent.id] += chunk;
-                
-                // 执行暴力清洗
                 const cleanText = cleanAndFormat(agentResponses[agent.id]);
                 
                 try {
-                    // 即使 Marked 没识别粗体，上面的 replace 已经把它变成了 <b>，HTML 会直接渲染
                     el.innerHTML = marked.parse(cleanText);
                     el.scrollTop = el.scrollHeight;
                 } catch (e) {
@@ -182,7 +187,6 @@
         btn.disabled = false; btn.innerText = '开始会诊';
     }
 
-    // --- API 调用逻辑 (不变) ---
     async function simulateCozeAPIStream(botId, fullPrompt, callback) {
         if(!botId) return;
         try {
@@ -223,4 +227,3 @@
 </script>
 </body>
 </html>
-
