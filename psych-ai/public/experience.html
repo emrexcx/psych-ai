@@ -14,59 +14,45 @@
         .header-right { display: flex; align-items: center; gap: 15px; }
         .status-badge { font-size: 12px; background: #e3f2fd; color: var(--med-blue); padding: 5px 12px; border-radius: 20px; font-weight: 600; }
         .back-link { text-decoration: none; color: #fff; background-color: #343a40; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; transition: 0.2s; display: flex; align-items: center; gap: 5px; }
-        .back-link:hover { background-color: #000; transform: translateY(-1px); }
         #panels-container { flex: 1; padding: 25px; display: flex; gap: 20px; overflow-x: auto; align-items: stretch; padding-bottom: 10px; }
         #panels-container::-webkit-scrollbar { height: 8px; }
         #panels-container::-webkit-scrollbar-thumb { background: #cfd8dc; border-radius: 4px; }
-        .expert-card { flex: 1; min-width: 300px; background: var(--card-bg); border-radius: 12px; border: 1px solid #eef2f5; box-shadow: var(--shadow); display: flex; flex-direction: column; transition: transform 0.2s; position: relative; overflow: hidden; }
-        .expert-card:hover { transform: translateY(-5px); box-shadow: 0 12px 30px rgba(0, 123, 255, 0.15); }
-        .card-header { padding: 20px; border-bottom: 1px solid #f5f7fa; display: flex; align-items: center; background: #fff; }
-        .avatar { width: 48px; height: 48px; border-radius: 10px; margin-right: 12px; background-size: cover; border: 1px solid #eee; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        
+        /* 卡片样式 */
+        .expert-card { flex: 1; min-width: 320px; background: var(--card-bg); border-radius: 12px; border: 1px solid #eef2f5; box-shadow: var(--shadow); display: flex; flex-direction: column; position: relative; overflow: hidden; }
+        .card-header { padding: 20px; border-bottom: 1px solid #f5f7fa; display: flex; align-items: center; background: #fff; flex-shrink: 0; }
+        .avatar { width: 48px; height: 48px; border-radius: 10px; margin-right: 12px; background-size: cover; border: 1px solid #eee; }
         .expert-info h3 { margin: 0; font-size: 15px; color: #333; font-weight: 700; }
         .expert-info span { font-size: 12px; color: #8898aa; font-weight: 500; }
         .card-freud { border-top: 4px solid #e74c3c; } .card-jung { border-top: 4px solid #9b59b6; } .card-adler { border-top: 4px solid #f39c12; } .card-contemp { border-top: 4px solid #20c997; } .card-narrative { border-top: 4px solid #3498db; }
         
-        /* 🟢 修复核心：强制 Markdown 样式生效 */
-        .diagnosis-area { flex: 1; padding: 25px; font-size: 14px; line-height: 1.6; color: #374151; overflow-y: auto; background-color: #fff; }
-        
-        /* 强制加粗可见 */
-        .diagnosis-area strong { 
-            font-weight: 900 !important; 
-            color: #000 !important; 
-            background-color: rgba(255, 215, 0, 0.15); /* 淡黄色背景高亮 */
-            padding: 0 2px;
-            border-radius: 3px;
+        /* 🟢 修复后的内容区域样式 */
+        .diagnosis-area { 
+            flex: 1; 
+            padding: 20px; 
+            font-size: 14px; 
+            line-height: 1.7; 
+            color: #374151; 
+            overflow-y: auto; 
+            background-color: #fff; 
+            /* 关键：防止长链接撑破布局 */
+            word-wrap: break-word; 
+            word-break: break-word;
         }
         
-        /* 强制列表缩进和间距 */
-        .diagnosis-area ol, .diagnosis-area ul {
-            margin-top: 10px !important;
-            margin-bottom: 10px !important;
-            padding-left: 25px !important;
-        }
-        .diagnosis-area li {
-            margin-bottom: 8px !important;
-            list-style-position: outside !important;
-        }
-        .diagnosis-area li::marker { 
-            color: var(--med-blue); 
-            font-weight: bold; 
-        }
+        /* Markdown 元素样式 */
+        .diagnosis-area p { margin-bottom: 10px; margin-top: 0; }
+        .diagnosis-area strong { color: #000; font-weight: 700; background: rgba(0,0,0,0.04); padding: 0 3px; border-radius: 3px; }
+        .diagnosis-area ul, .diagnosis-area ol { padding-left: 20px; margin: 10px 0; }
+        .diagnosis-area li { margin-bottom: 5px; }
+        .diagnosis-area blockquote { border-left: 3px solid #e5e7eb; padding-left: 10px; color: #666; margin: 10px 0; font-style: italic; }
+        /* 隐藏掉没清理干净的空链接 */
+        .diagnosis-area a:empty { display: none; }
 
-        .diagnosis-area p { margin-bottom: 12px; margin-top: 0; }
-        .diagnosis-area blockquote { border-left: 3px solid #e5e7eb; margin: 10px 0; padding-left: 15px; color: #6b7280; font-style: italic; background: #f9fafb; padding: 8px 15px; border-radius: 0 4px 4px 0; }
-        .diagnosis-area h3 { font-size: 16px; border-bottom: 1px dashed #e5e7eb; padding-bottom: 5px; color: #1f2937; margin-top: 15px; margin-bottom: 8px; font-weight: 700; }
-
-        .diagnosis-area::-webkit-scrollbar { width: 5px; }
-        .diagnosis-area::-webkit-scrollbar-thumb { background: #edf2f7; border-radius: 3px; }
-
-        .input-wrapper { background: #fff; padding: 20px; border-top: 1px solid #e1e8ed; display: flex; justify-content: center; box-shadow: 0 -4px 20px rgba(0,0,0,0.02); }
+        .input-wrapper { background: #fff; padding: 20px; border-top: 1px solid #e1e8ed; display: flex; justify-content: center; }
         .input-group { width: 100%; max-width: 900px; display: flex; gap: 15px; }
-        input { flex: 1; padding: 14px 20px; border: 2px solid #eef2f5; border-radius: 8px; font-size: 16px; transition: 0.3s; outline: none; }
-        input:focus { border-color: var(--med-blue); background: #fbfdff; }
-        button { padding: 0 35px; background: var(--med-blue); color: #fff; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 10px rgba(0, 123, 255, 0.3); }
-        button:hover { background: #0056b3; transform: translateY(-2px); }
-        button:disabled { background: #ccc; transform: none; box-shadow: none; cursor: not-allowed; }
+        input { flex: 1; padding: 14px 20px; border: 2px solid #eef2f5; border-radius: 8px; font-size: 16px; outline: none; }
+        button { padding: 0 35px; background: var(--med-blue); color: #fff; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -89,13 +75,12 @@
     </div>
 
 <script>
-    // 🟢 1. 配置 Marked 解析器
+    // 🟢 配置 Marked
     marked.use({
         breaks: true, // 允许回车换行
-        gfm: true     // 启用 GitHub 风格
+        gfm: true
     });
 
-    // ⚠️⚠️⚠️ 这里的 Bot ID 保持你原有的设置 ⚠️⚠️⚠️
     const agents = [
         { id: 'freud', name: 'S. Freud', title: '精神分析', theme: 'card-freud', botId: '7576937790106402857', avatar: 'images/freud2.png' },
         { id: 'jung', name: 'C.G. Jung', title: '分析心理学', theme: 'card-jung', botId: '7576939753841508378', avatar: 'images/jung2.png' },
@@ -132,21 +117,32 @@
 
     function handleKeyPress(event) { if (event.key === 'Enter') startConsultation(); }
 
-    // 🟢 2. 核心：格式清洗与修复函数 (Fix Markdown)
-    function preprocessMarkdown(text) {
+    // 🟢 2. 强力清洗函数 (针对截图中的乱码)
+    function cleanAndFormat(text) {
         if (!text) return "";
         let clean = text;
 
-        // --- A. 清洗脏数据 (Ref cleaning) ---
-        clean = clean.replace(/\[\d+\]\s*(therapy|doc)_[^\n]*/gi, ""); // 删引用文件
-        clean = clean.replace(/【.*?†source】/g, ""); // 删 Coze 引用
-        clean = clean.replace(/\[\d+\]/g, ""); // 删数字引用 [1]
-        clean = clean.replace(/[（(]\s*section\s*\d+.*?[）)]/gi, ""); // 删 section
+        // 1. 移除 Coze 内部引用和 Knowledge Base 标记
+        // 去除 [therapy_xxx]、[doc_xxx]
+        clean = clean.replace(/\[(therapy|doc|file)_.*?\]/gi, ""); 
+        // 去除 Coze 的引用标记 【xxx†source】
+        clean = clean.replace(/【.*?†source】/g, "");
         
-        // --- B. 修复格式 (Fix Formatting) ---
-        // 关键：如果 "1. " 前面不是换行符，强行加两个换行
+        // 2. 移除那个超长的蓝色链接 (OceanCloudAPI)
+        // 匹配括号里的链接或裸露链接
+        clean = clean.replace(/\(https?:\/\/.*?oceancloudapi.*?\)/gi, "");
+        clean = clean.replace(/https?:\/\/.*?oceancloudapi[^\s]*/gi, "");
+
+        // 3. 移除截图里看到的 ISBN 号等页脚垃圾信息
+        // 简单暴力：如果一行全是数字或看起来像 ISBN，删掉
+        clean = clean.replace(/\n\s*[\d-]{10,}\s*\n/g, "\n");
+        
+        // 4. 修复加粗格式粘连
+        // 这里的逻辑是：如果 ** 前面没有空格，给它加个空格，避免解析失效
+        clean = clean.replace(/([^\s])(\*\*)/g, '$1 $2');
+
+        // 5. 修复列表格式 (1. 必须在新行)
         clean = clean.replace(/([^\n])\s*(\d+\.)/g, '$1\n\n$2');
-        // 关键：如果 "- " 或 "* " 前面不是换行符，强行加两个换行
         clean = clean.replace(/([^\n])\s*([-\*]\s)/g, '$1\n\n$2');
 
         return clean;
@@ -165,23 +161,20 @@
             document.getElementById(`output-${agent.id}`).innerHTML = '<div style="color:#007bff; display:flex; align-items:center; gap:5px;"><i>⏳</i> 正在生成独立报告...</div>';
         });
 
-        const experiencePrompt = `【指令：现在是专业的心理咨询会诊模式。请忽略其他专家的存在，基于你的理论流派，提供一份独立、冷静、深度的分析报告。语气要专业、客观。不要攻击他人。】\n\n用户困扰：${query}`;
+        // 提示词优化：增加“不要引用来源”的要求
+        const experiencePrompt = `【指令：现在是专业的心理咨询会诊模式。请忽略其他专家的存在，基于你的理论流派，提供一份独立、冷静、深度的分析报告。语气要专业、客观。不要输出引用来源（Sources）、不要输出参考文献列表、不要显示文档ID。】\n\n用户困扰：${query}`;
 
         const tasks = agents.map(agent => {
             return simulateCozeAPIStream(agent.botId, experiencePrompt, (chunk) => {
                 const el = document.getElementById(`output-${agent.id}`);
                 
-                // 累加数据
                 agentResponses[agent.id] += chunk;
-
-                // 🟢 3. 先清洗，再渲染
-                const rawText = agentResponses[agent.id];
-                const cleanText = preprocessMarkdown(rawText);
-
+                
+                // 清洗 + 渲染
+                const cleanText = cleanAndFormat(agentResponses[agent.id]);
+                
                 try {
-                    // 使用 marked 解析
                     el.innerHTML = marked.parse(cleanText);
-                    // 滚动到底部
                     el.scrollTop = el.scrollHeight;
                 } catch (e) {
                     el.innerText = cleanText;
@@ -193,7 +186,7 @@
         btn.disabled = false; btn.innerText = '开始会诊';
     }
 
-    // --- 真实 API 调用 ---
+    // --- 真实 API 调用 (保持不变) ---
     async function simulateCozeAPIStream(botId, fullPrompt, callback) {
         if(!botId) return;
         try {
@@ -234,3 +227,5 @@
 </script>
 </body>
 </html>
+</html>
+
