@@ -7,6 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
+        /* 保持原有样式不变 */
         body { margin: 0; height: 100vh; font-family: 'Zen Maru Gothic', sans-serif; color: #4a4a4a; background-color: #d7ccc8; background-image: url('images/sandbox_bg.jpg'), url('https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?q=80&w=2070'); background-size: cover; background-position: center; background-repeat: no-repeat; display: flex; justify-content: center; align-items: center; overflow: hidden; }
         body::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle, rgba(0,0,0,0) 0%, rgba(0,0,0,0.4) 100%); pointer-events: none; z-index: -1; }
         #sandbox-panel { width: 90%; max-width: 550px; height: 85vh; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px) saturate(180%); border-radius: 24px; border: 1px solid rgba(255, 255, 255, 0.6); box-shadow: 0 30px 60px rgba(0,0,0,0.3); display: flex; flex-direction: column; overflow: hidden; animation: floatUp 0.8s ease; }
@@ -59,6 +60,7 @@
 <script>
     // ⚠️⚠️⚠️ 你的沙盘 Bot ID ⚠️⚠️⚠️
     const SANDBOX_BOT_ID = '7574847485391929396'; 
+    let conversationId = "sandbox_" + Date.now(); // 初始化会话 ID
 
     const chatBox = document.getElementById('chat-box');
     const userInput = document.getElementById('user-input');
@@ -84,7 +86,7 @@
                 body: JSON.stringify({
                     query: text,
                     bot_id: SANDBOX_BOT_ID,
-                    conversation_id: "sandbox_" + Date.now() 
+                    conversation_id: conversationId // 发送会话 ID
                 })
             });
 
@@ -105,61 +107,49 @@
                     if (line.startsWith('data:') && line.length > 5) {
                         try {
                             const rawJson = line.slice(5).trim();
-                            if (rawJson === '[DONE]') continue;
-
                             const data = JSON.parse(rawJson);
                             
-                            // ✂️ 只看 delta (正在打字)
+                            // ✂️ 只处理 delta 类型的消息
                             if (data.event === 'conversation.message.delta' && data.message) {
                                 
-                                // 🚫 1. 坚决屏蔽 "追问" (Follow-up)
-                                // 这是唯一的死刑标准：只要是追问，就杀！
+                                // 🚫 1. 坚决屏蔽 "追问"
                                 if (data.message.type === 'follow_up') continue;
 
                                 let content = data.message.content;
                                 if (!content) continue;
-
-                                // 🟢 2. 多模态解析 (如果发来的是 JSON 数组)
-                                if (content.trim().startsWith('[')) {
-                                    try {
-                                        const items = JSON.parse(content);
-                                        let parsedContent = "";
-                                        items.forEach(item => {
-                                            if(item.type === 'text') parsedContent += item.text;
-                                            if(item.type === 'image') parsedContent += `\n\n![沙盘](${item.file_url})\n\n`;
-                                        });
-                                        content = parsedContent;
-                                    } catch(e) {}
-                                }
                                 
-                                // 🛡️ 3. 垃圾代码拦截 (黑名单)
-                                // 只有明确长得像垃圾的才拦截，其他的都放行！
+                                // 🛡️ 2. 垃圾代码拦截 (黑名单)
+                                // 拦截以 { 开头且不是多模态数组的消息，以及明显的代码特征
                                 if (
-                                    content.trim().startsWith('{') || 
+                                    (content.trim().startsWith('{') && !content.trim().startsWith('[')) || 
                                     content.includes('"msg_type"') || 
                                     content.includes('FunctionCall') || 
-                                    content.includes('INSERT INTO') ||
-                                    content.includes('streaming reply')
+                                    content.includes('INSERT INTO')
                                 ) {
                                     continue; 
                                 }
 
-                                // 🛠️ 4. 图片链接急救
-                                // 如果内容里有 http...png 但没有 ![] 标签，手动加上！
-                                if (content.match(/https?:\/\/[^\s"']+\.(png|jpg|jpeg|webp)/) && !content.includes('![')) {
-                                    content = content.replace(/(https?:\/\/[^\s"']+\.(png|jpg|jpeg|webp))/g, '\n\n![沙盘]($1)\n\n');
+                                // 🛠️ 3. 图片链接急救
+                                // 如果发现是 Coze 的图片链接，且没有被 markdown 包裹，手动包裹起来
+                                if (content.includes('s.coze.cn') && !content.includes('![')) {
+                                    content = `\n\n![沙盘](${content})\n\n`;
                                 }
 
                                 fullResponse += content;
+                                // 使用 marked解析 markdown 并更新内容
                                 loadingBubble.innerHTML = marked.parse(fullResponse);
                                 chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
                             }
-                        } catch(e) {}
+                        } catch(e) {
+                            // 忽略 JSON 解析错误，避免崩坏
+                            console.warn("JSON Parse Error (ignored):", e);
+                        }
                     }
                 }
             }
         } catch (err) {
-            document.getElementById(loadingId).innerHTML = " [网络连接中断] ";
+            console.error("Network Error:", err);
+            document.getElementById(loadingId).innerHTML = " [网络连接中断，请重试] ";
         } finally {
             sendBtn.disabled = false;
         }
