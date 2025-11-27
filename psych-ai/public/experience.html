@@ -25,12 +25,14 @@
         .expert-info h3 { margin: 0; font-size: 15px; color: #333; font-weight: 700; }
         .expert-info span { font-size: 12px; color: #8898aa; font-weight: 500; }
         .card-freud { border-top: 4px solid #e74c3c; } .card-jung { border-top: 4px solid #9b59b6; } .card-adler { border-top: 4px solid #f39c12; } .card-contemp { border-top: 4px solid #20c997; } .card-narrative { border-top: 4px solid #3498db; }
+        
+        /* 诊断区样式优化 */
         .diagnosis-area { flex: 1; padding: 25px; font-size: 14px; line-height: 1.8; color: #4a5568; overflow-y: auto; background-color: #fff; }
         .diagnosis-area p { margin-bottom: 10px; }
         .diagnosis-area strong { color: #000; font-weight: 700; }
-        .diagnosis-area ul { padding-left: 20px; margin-bottom: 10px; }
         .diagnosis-area::-webkit-scrollbar { width: 5px; }
         .diagnosis-area::-webkit-scrollbar-thumb { background: #edf2f7; border-radius: 3px; }
+
         .input-wrapper { background: #fff; padding: 20px; border-top: 1px solid #e1e8ed; display: flex; justify-content: center; box-shadow: 0 -4px 20px rgba(0,0,0,0.02); }
         .input-group { width: 100%; max-width: 900px; display: flex; gap: 15px; }
         input { flex: 1; padding: 14px 20px; border: 2px solid #eef2f5; border-radius: 8px; font-size: 16px; transition: 0.3s; outline: none; }
@@ -54,38 +56,38 @@
 
     <div class="input-wrapper">
         <div class="input-group">
-            <input type="text" id="user-input" placeholder="请详细描述您的困扰，获取多维度的独立诊断..." onkeypress="handleKeyPress(event)">
+            <input type="text" id="user-input" placeholder="请详细描述您的困扰..." onkeypress="handleKeyPress(event)">
             <button id="send-btn" onclick="startConsultation()">开始会诊</button>
         </div>
     </div>
 
 <script>
-    // ⚠️⚠️⚠️ 必填：请把 ID 换成你自己的！ ⚠️⚠️⚠️
+    // ⚠️⚠️⚠️ 请在此处填入你的真实 Bot ID ⚠️⚠️⚠️
     const agents = [
         { 
             id: 'freud', name: 'S. Freud', title: '精神分析', theme: 'card-freud', 
             botId: '7576937790106402857', 
-            avatar: 'images/freud2.png' 
+            avatar: 'images/freud.png' 
         },
         { 
             id: 'jung', name: 'C.G. Jung', title: '分析心理学', theme: 'card-jung', 
             botId: '7576939753841508378', 
-            avatar: 'images/jung2.png' 
+            avatar: 'images/jung.png' 
         },
         { 
             id: 'adler', name: 'A. Adler', title: '个体心理学', theme: 'card-adler', 
             botId: '7576940585882550326', 
-            avatar: 'images/adler2.png' 
+            avatar: 'images/adler.png' 
         },
         { 
             id: 'contemporary', name: 'Contemporary', title: '当代动力学', theme: 'card-contemp', 
             botId: '7576941130223255578', 
-            avatar: 'images/contemp2.png' 
+            avatar: 'images/contemp.png' 
         },
         { 
             id: 'narrative', name: 'Narrative', title: '叙事治疗', theme: 'card-narrative', 
             botId: '7576941141384544262', 
-            avatar: 'images/narrative2.png' 
+            avatar: 'images/narrative.png' 
         }
     ];
 
@@ -156,61 +158,10 @@
 
                 // 5. 删掉 Coze 特殊标记
                 cleanText = cleanText.replace(/【.*?†source】/g, "");
-
-                // 渲染
-                el.innerHTML = marked.parse(cleanText);
-                el.scrollTop = el.scrollHeight;
-            });
-        });
-
-        await Promise.all(tasks);
-        btn.disabled = false; btn.innerText = '开始会诊';
-    }
-
-// 2. 核心逻辑：并发调用 API
-    async function startConsultation() {
-        const input = document.getElementById('user-input');
-        const btn = document.getElementById('send-btn');
-        const query = input.value.trim();
-        if(!query) return;
-
-        input.value = ''; btn.disabled = true; btn.innerText = '分析进行中...';
-
-        agents.forEach(agent => {
-            agentResponses[agent.id] = ""; 
-            document.getElementById(`output-${agent.id}`).innerHTML = '<div style="color:#007bff; display:flex; align-items:center; gap:5px;"><i>⏳</i> 正在生成独立报告...</div>';
-        });
-
-        const experiencePrompt = `【指令：现在是专业的心理咨询会诊模式。请忽略其他专家的存在，基于你的理论流派，提供一份独立、冷静、深度的分析报告。语气要专业、客观。不要攻击他人。】\n\n用户困扰：${query}`;
-
-        const tasks = agents.map(agent => {
-            return simulateCozeAPIStream(agent.botId, experiencePrompt, (chunk, isFirstChunk) => {
-                const el = document.getElementById(`output-${agent.id}`);
                 
-                // 累加文字
-                agentResponses[agent.id] += chunk;
-
-                // 🟢 核弹级清洗逻辑 🟢
-                let cleanText = agentResponses[agent.id];
-
-                // 1. 删掉所有 [1] [20] 这种纯数字引用标
+                // 6. 删掉纯数字标号
                 cleanText = cleanText.replace(/\[\d+\]/g, "");
 
-                // 2. 删掉文件名 (therapy_xxx)
-                cleanText = cleanText.replace(/therapy_[^\s\n)）]+/gi, "");
-
-                // 3. 删掉 (section X) 或 section X
-                cleanText = cleanText.replace(/[(（]?\s*section\s*\d+\s*[)）]?/gi, "");
-
-                // 4. 删掉 Coze 特殊标记
-                cleanText = cleanText.replace(/【.*?†source】/g, "");
-                
-                // 5. 删掉文末残留的孤立括号 [ (例如截图里的 "[ ")
-                cleanText = cleanText.replace(/\[\s*$/g, "");
-
-                // 6. (可选) 如果你想把整段 "参考《...》" 都删掉，加上这句：
-                // cleanText = cleanText.replace(/参考《.*?》.*?(\n|$)/g, "");
-
                 // 渲染
                 el.innerHTML = marked.parse(cleanText);
                 el.scrollTop = el.scrollHeight;
@@ -220,3 +171,51 @@
         await Promise.all(tasks);
         btn.disabled = false; btn.innerText = '开始会诊';
     }
+
+    // --- 真实 API 调用 ---
+    async function simulateCozeAPIStream(botId, fullPrompt, callback) {
+        if(!botId) return;
+
+        try {
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    query: fullPrompt,
+                    bot_id: botId,
+                    conversation_id: "exp_" + Date.now()
+                })
+            });
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let isFirst = true;
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split('\n');
+                
+                for (const line of lines) {
+                    if (line.startsWith('data:') && line.length > 5) {
+                        try {
+                            const data = JSON.parse(line.slice(5));
+                            if (data.event === 'conversation.message.delta' && data.message && data.message.content) {
+                                if(isFirst) {
+                                    if(!data.message.content.trim()) continue;
+                                    isFirst = false; 
+                                }
+                                callback(data.message.content);
+                            }
+                        } catch(e) {}
+                    }
+                }
+            }
+        } catch (err) {
+            console.error("Error:", err);
+        }
+    }
+</script>
+</body>
+</html>
