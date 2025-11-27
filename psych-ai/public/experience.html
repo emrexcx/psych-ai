@@ -38,12 +38,8 @@
             word-wrap: break-word; 
         }
         
-        /* 🟢 核弹级 CSS：强制隐藏所有链接 (a标签) */
-        .diagnosis-area a { 
-            display: none !important; 
-            opacity: 0;
-            pointer-events: none;
-        }
+        /* CSS 强制隐藏所有链接 */
+        .diagnosis-area a { display: none !important; opacity: 0; pointer-events: none; }
 
         /* 强制加粗样式 */
         .diagnosis-area b, .diagnosis-area strong { 
@@ -121,33 +117,41 @@
 
     function handleKeyPress(event) { if (event.key === 'Enter') startConsultation(); }
 
-    // 🟢 2. 增强版清洗函数
+    // 🟢 2. 深度清洗函数 (Meta-Cleaner)
     function cleanAndFormat(text) {
         if (!text) return "";
         let clean = text;
 
-        // --- A. 删除 URL 和 引用 ---
-        // 1. 强力删除所有包含 http 的括号内容 (针对截图中的链接)
-        // 使用 [\s\S] 匹配换行符，防止多行链接漏网
-        clean = clean.replace(/\(https?:\/\/[\s\S]*?\)/g, "");
+        // --- A. 移除元数据列表 (Target: 你的截图内容) ---
+        // 1. 删除包含 "therapy_" 或 "doc_" 且后面跟着任意字符的行
+        clean = clean.replace(/(^|\n)\s*[-*]?\s*(therapy|doc|file)_[^\n]*/gi, "");
         
-        // 2. 删除裸露的 URL
-        clean = clean.replace(/https?:\/\/[^\s\)]+/g, "");
+        // 2. 删除包含 "主编"、"著" 且看起来像引用的行
+        clean = clean.replace(/(^|\n)\s*[-*]?\s*.*?(主编|作者|著).*?[\n]/gi, "");
 
-        // 3. 删除 Coze 引用
-        clean = clean.replace(/\[\d+\]/g, "");
-        clean = clean.replace(/\(section\s*\d+\)/gi, "");
+        // 3. 删除包含长哈希值 (32位字母数字) 的行 (那个 55330... 的东西)
+        clean = clean.replace(/(^|\n)\s*[-*]?\s*[a-f0-9]{30,}[^\n]*/gi, "");
+        
+        // 4. 删除特定的来源标记
+        clean = clean.replace(/Anna’s/gi, "");
+        clean = clean.replace(/Anna's/gi, "");
+
+        // --- B. 移除链接和 Coze 标记 ---
+        clean = clean.replace(/\(https?:\/\/[\s\S]*?\)/g, ""); // 括号链接
+        clean = clean.replace(/https?:\/\/[^\s\)]+/g, ""); // 裸链接
         clean = clean.replace(/\[(therapy|doc|file)_.*?\]/gi, ""); 
         clean = clean.replace(/【.*?†source】/g, "");
+        clean = clean.replace(/\[\d+\]/g, "");
 
-        // --- B. 修复格式 ---
-        // 修复 **粗体**
+        // --- C. 修复格式 ---
         clean = clean.replace(/\*\*\s+(.*?)\s+\*\*/g, '**$1**');
         clean = clean.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
-        
-        // 修复列表
         clean = clean.replace(/([^\n])\s*(\d+\.)/g, '$1\n\n$2');
         clean = clean.replace(/([^\n])\s*([-\*]\s)/g, '$1\n\n$2');
+
+        // --- D. 移除空行垃圾 ---
+        // 这一步是为了防止删掉文字后留下大量空行
+        clean = clean.replace(/\n{3,}/g, "\n\n");
 
         return clean;
     }
@@ -165,7 +169,8 @@
             document.getElementById(`output-${agent.id}`).innerHTML = '<div style="color:#007bff; display:flex; align-items:center; gap:5px;"><i>⏳</i> 正在生成独立报告...</div>';
         });
 
-        const experiencePrompt = `【指令：现在是专业的心理咨询会诊模式。请忽略其他专家的存在，基于你的理论流派，提供一份独立、冷静、深度的分析报告。语气要专业、客观。不要输出引用来源、不要使用参考文献注脚、不要显示文档链接。】\n\n用户困扰：${query}`;
+        // 提示词增强：明确禁止输出元数据
+        const experiencePrompt = `【指令：现在是专业的心理咨询会诊模式。请忽略其他专家的存在，基于你的理论流派，提供一份独立、冷静、深度的分析报告。语气要专业、客观。严格禁止输出引用来源、禁止列出参考文献、禁止显示文件名或哈希值。】\n\n用户困扰：${query}`;
 
         const tasks = agents.map(agent => {
             return simulateCozeAPIStream(agent.botId, experiencePrompt, (chunk) => {
