@@ -26,10 +26,23 @@
         .expert-info span { font-size: 12px; color: #8898aa; font-weight: 500; }
         .card-freud { border-top: 4px solid #e74c3c; } .card-jung { border-top: 4px solid #9b59b6; } .card-adler { border-top: 4px solid #f39c12; } .card-contemp { border-top: 4px solid #20c997; } .card-narrative { border-top: 4px solid #3498db; }
         
-        /* 诊断区样式优化 */
-        .diagnosis-area { flex: 1; padding: 25px; font-size: 14px; line-height: 1.8; color: #4a5568; overflow-y: auto; background-color: #fff; }
-        .diagnosis-area p { margin-bottom: 10px; }
-        .diagnosis-area strong { color: #000; font-weight: 700; }
+        /* 🟢 诊断区样式优化 (Markdown 专用样式) */
+        .diagnosis-area { flex: 1; padding: 25px; font-size: 14px; line-height: 1.6; color: #374151; overflow-y: auto; background-color: #fff; }
+        
+        /* Markdown 标签样式 */
+        .diagnosis-area p { margin-bottom: 12px; margin-top: 0; }
+        .diagnosis-area strong { color: #111827; font-weight: 700; background: rgba(0,0,0,0.03); padding: 0 2px; border-radius: 3px; }
+        .diagnosis-area em { color: #4b5563; font-style: italic; }
+        /* 列表样式 */
+        .diagnosis-area ul, .diagnosis-area ol { padding-left: 20px; margin-bottom: 12px; }
+        .diagnosis-area li { margin-bottom: 4px; }
+        .diagnosis-area li::marker { color: var(--med-blue); font-weight: bold; }
+        /* 引用样式 */
+        .diagnosis-area blockquote { border-left: 3px solid #e5e7eb; margin: 10px 0; padding-left: 15px; color: #6b7280; font-style: italic; background: #f9fafb; padding: 8px 15px; border-radius: 0 4px 4px 0; }
+        /* 标题样式 */
+        .diagnosis-area h1, .diagnosis-area h2, .diagnosis-area h3 { color: #1f2937; margin-top: 15px; margin-bottom: 8px; font-weight: 700; line-height: 1.4; }
+        .diagnosis-area h3 { font-size: 16px; border-bottom: 1px dashed #e5e7eb; padding-bottom: 5px; }
+
         .diagnosis-area::-webkit-scrollbar { width: 5px; }
         .diagnosis-area::-webkit-scrollbar-thumb { background: #edf2f7; border-radius: 3px; }
 
@@ -93,6 +106,12 @@
 
     const container = document.getElementById('panels-container');
     const agentResponses = {}; 
+
+    // 🟢 初始化 Marked 配置，确保换行符能正常显示
+    marked.use({
+        breaks: true, // 允许回车换行
+        gfm: true     // 启用 GitHub 风格 Markdown
+    });
 
     function initUI() {
         container.innerHTML = '';
@@ -162,7 +181,8 @@
                 // 6. 删掉纯数字标号
                 cleanText = cleanText.replace(/\[\d+\]/g, "");
 
-                // 渲染
+                // 🟢 核心修改：使用 marked 解析 Markdown 并渲染
+                // 之前你的代码有 marked.parse 但没有配套 CSS，现在 CSS 已添加
                 el.innerHTML = marked.parse(cleanText);
                 el.scrollTop = el.scrollHeight;
             });
@@ -219,4 +239,3 @@
 </script>
 </body>
 </html>
-
