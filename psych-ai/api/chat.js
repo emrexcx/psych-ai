@@ -1,4 +1,4 @@
-// api/chat.js
+// api/chat.js —— 修复了长数据断裂的问题
 export const config = {
   runtime: 'edge',
 };
@@ -7,13 +7,15 @@ export default async function handler(req) {
   if (req.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
 
   try {
+    // 1. 接收前端传来的参数，包括对话 ID
     const { query, bot_id, conversation_id } = await req.json();
-    const COZE_API_KEY = process.env.COZE_API_KEY;
+    const COZE_API_TOKEN = process.env.COZE_API_TOKEN;
 
+    // 2. 发送请求给 Coze
     const response = await fetch('https://api.coze.cn/v3/chat', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${COZE_API_KEY}`,
+        'Authorization': `Bearer ${COZE_API_TOKEN}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -21,70 +23,46 @@ export default async function handler(req) {
         user_id: "web_user",
         stream: true,
         auto_save_history: true,
+        // 如果有 conversation_id 就带上，保持上下文
+        ...(conversation_id && { conversation_id }),
         additional_messages: [{ role: "user", content: query, content_type: "text" }]
       }),
     });
 
     if (!response.ok) {
-      return new Response(JSON.stringify({ error: "Coze API Error" }), { status: response.status });
+      const errorText = await response.text();
+      console.error("Coze API Error:", response.status, errorText);
+      return new Response(JSON.stringify({ error: `Coze API Error: ${response.status}` }), { status: response.status });
     }
 
     const encoder = new TextEncoder();
     const decoder = new TextDecoder();
 
+    // 3. 创建流式响应
     const stream = new ReadableStream({
       async start(controller) {
         const reader = response.body.getReader();
-        let currentEvent = ''; 
-        let buffer = ''; // 🟢 1. 新增：缓存池，用于拼接被切断的数据
+        let buffer = ''; // 🟢 “胶水”缓存区
 
         try {
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
-            // 🟢 2. 解码并追加到 buffer，而不是直接处理 chunk
+            // 🟢 把新收到的数据粘到缓存区后面
             buffer += decoder.decode(value, { stream: true });
-            
-            // 🟢 3. 按换行符切割，但保留最后一个可能不完整的部分
+            // 🟢 按换行符切分数据
             const lines = buffer.split('\n');
-            buffer = lines.pop(); // 将数组最后一行（可能不完整）拿出来放回 buffer，等待下一个 chunk
+            // 🟢 把最后一行可能是半截的数据留着，放回缓存区等待下一次拼接
+            buffer = lines.pop(); 
 
             for (const line of lines) {
               const trimmedLine = line.trim();
-              if (!trimmedLine) continue;
+              if (!trimmedLine || trimmedLine === 'data: [DONE]') continue;
 
-              // 捕捉 event 类型
-              if (trimmedLine.startsWith('event:')) {
-                currentEvent = trimmedLine.replace('event:', '').trim();
-                continue;
-              }
-
-              // 处理 data 数据
+              // 只转发以 data: 开头的数据行
               if (trimmedLine.startsWith('data:')) {
-                // Coze 返回的数据有时是 "data: {...}"
-                const dataStr = trimmedLine.replace('data:', '').trim();
-                
-                // 如果是 conversation.message.delta 且包含内容
-                if (currentEvent === 'conversation.message.delta') {
-                  try {
-                    const data = JSON.parse(dataStr);
-                    
-                    // 兼容 content 在根节点或 message 节点的情况
-                    const content = data.content || data.message?.content;
-                    
-                    if (content && !content.includes('card_type')) {
-                      const msg = JSON.stringify({
-                        event: 'conversation.message.delta',
-                        message: { content: content }
-                      });
-                      controller.enqueue(encoder.encode(`data: ${msg}\n\n`));
-                    }
-                  } catch (e) {
-                    // JSON 解析失败通常是因为数据不完整，但在有了 buffer 机制后，这种情况会极少发生
-                    // console.error("JSON Parse Error:", e);
-                  }
-                }
+                controller.enqueue(encoder.encode(`${trimmedLine}\n\n`));
               }
             }
           }
@@ -100,6 +78,7 @@ export default async function handler(req) {
     return new Response(stream, { headers: { 'Content-Type': 'text/event-stream' } });
 
   } catch (error) {
+    console.error("Handler Error:", error);
     return new Response(JSON.stringify({ error: error.message }), { status: 500 });
   }
 }
