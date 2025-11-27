@@ -11,65 +11,45 @@
             margin: 0; height: 100vh;
             font-family: 'Zen Maru Gothic', sans-serif;
             color: #4a4a4a;
-            
-            /* 背景设置 */
+            /* 背景图 */
             background-color: #d7ccc8;
             background-image: url('images/sandbox_bg.jpg'), url('https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?q=80&w=2070');
-            background-size: cover; 
-            background-position: center;
-            background-repeat: no-repeat;
-            
-            display: flex; justify-content: center; align-items: center;
-            overflow: hidden;
+            background-size: cover; background-position: center; background-repeat: no-repeat;
+            display: flex; justify-content: center; align-items: center; overflow: hidden;
         }
-
         body::before {
             content: ''; position: absolute; inset: 0;
             background: radial-gradient(circle, rgba(0,0,0,0) 0%, rgba(0,0,0,0.4) 100%);
             pointer-events: none; z-index: -1;
         }
 
-        /* --- 悬浮的主面板 --- */
+        /* 主面板 */
         #sandbox-panel {
             width: 90%; max-width: 550px; height: 85vh;
-            background: rgba(255, 255, 255, 0.75);
+            background: rgba(255, 255, 255, 0.85); /*稍微不透明一点，遮挡背景*/
             backdrop-filter: blur(12px) saturate(180%);
-            -webkit-backdrop-filter: blur(12px) saturate(180%);
-            
-            border-radius: 24px;
-            border: 1px solid rgba(255, 255, 255, 0.6);
-            box-shadow: 
-                0 30px 60px rgba(0,0,0,0.3),
-                inset 0 0 0 1px rgba(255,255,255,0.4);
-            
-            display: flex; flex-direction: column;
-            overflow: hidden;
-            animation: floatUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+            border-radius: 24px; border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 30px 60px rgba(0,0,0,0.3);
+            display: flex; flex-direction: column; overflow: hidden;
+            animation: floatUp 0.8s ease;
         }
-        
         @keyframes floatUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* --- 头部 --- */
-        .header {
-            padding: 20px; text-align: center;
-            border-bottom: 1px solid rgba(0,0,0,0.05);
-            position: relative;
-        }
-        .header h1 { margin: 0; font-size: 18px; color: #333; letter-spacing: 4px; font-weight: bold; }
+        .header { padding: 20px; text-align: center; border-bottom: 1px solid rgba(0,0,0,0.05); position: relative; }
+        .header h1 { margin: 0; font-size: 18px; color: #333; letter-spacing: 4px; }
         .header p { margin: 5px 0 0; font-size: 12px; color: #666; }
         
         .home-btn {
             position: absolute; left: 20px; top: 50%; transform: translateY(-50%);
-            text-decoration: none; color: #666; font-size: 14px; transition: 0.3s;
-            border: 1px solid #999; padding: 4px 10px; border-radius: 20px;
+            text-decoration: none; color: #666; font-size: 14px; border: 1px solid #999; 
+            padding: 4px 10px; border-radius: 20px; transition: 0.3s;
         }
-        .home-btn:hover { background: #333; color: #fff; border-color: #333; }
+        .home-btn:hover { background: #333; color: #fff; }
 
-        /* --- 聊天区域 --- */
+        /* 聊天区 */
         #chat-box {
             flex: 1; overflow-y: auto; padding: 25px;
-            display: flex; flex-direction: column; gap: 20px;
-            scroll-behavior: smooth;
+            display: flex; flex-direction: column; gap: 20px; scroll-behavior: smooth;
         }
         #chat-box::-webkit-scrollbar { width: 0; }
 
@@ -79,54 +59,25 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
         
-        /* Bot 样式 */
-        .bot-msg {
-            align-self: flex-start; background: #fff; color: #444;
-            border-bottom-left-radius: 4px;
-        }
-        /* 图片样式修正 */
-        .bot-msg img { max-width: 100%; border-radius: 10px; margin-top: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .bot-msg p { margin: 0 0 10px 0; }
-        .bot-msg p:last-child { margin-bottom: 0; }
-        
-        /* User 样式 */
-        .user-msg {
-            align-self: flex-end; background: #8d6e63; color: #fff;
-            border-bottom-right-radius: 4px;
-        }
+        /* 机器人消息 */
+        .bot-msg { align-self: flex-start; background: #fff; color: #444; border-bottom-left-radius: 4px; }
+        /* ✅ 图片自适应样式 */
+        .bot-msg img { max-width: 100%; border-radius: 10px; margin-top: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .bot-msg p { margin: 0 0 10px 0; } .bot-msg p:last-child { margin-bottom: 0; }
 
-        /* 正在输入动画 */
-        .typing-dot {
-            display: inline-block; width: 6px; height: 6px; background: #aaa;
-            border-radius: 50%; margin: 0 2px; animation: bounce 1.4s infinite;
-        }
-        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
-        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        /* 用户消息 */
+        .user-msg { align-self: flex-end; background: #8d6e63; color: #fff; border-bottom-right-radius: 4px; }
+
+        /* 加载动画 */
+        .typing-dot { display: inline-block; width: 6px; height: 6px; background: #aaa; border-radius: 50%; margin: 0 2px; animation: bounce 1.4s infinite; }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; } .typing-dot:nth-child(3) { animation-delay: 0.4s; }
         @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
 
-        /* --- 底部输入 --- */
-        .input-area {
-            padding: 20px; background: rgba(255,255,255,0.5);
-            display: flex; gap: 10px; border-top: 1px solid rgba(255,255,255,0.3);
-        }
-        
-        input {
-            flex: 1; padding: 15px; border: none; border-radius: 12px;
-            background: rgba(255,255,255,0.8); outline: none;
-            font-family: inherit; color: #333; transition: 0.3s;
-            box-shadow: inset 0 2px 5px rgba(0,0,0,0.03);
-        }
+        .input-area { padding: 20px; background: rgba(255,255,255,0.5); display: flex; gap: 10px; border-top: 1px solid rgba(255,255,255,0.3); }
+        input { flex: 1; padding: 15px; border: none; border-radius: 12px; background: rgba(255,255,255,0.8); outline: none; font-family: inherit; color: #333; }
         input:focus { background: #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        
-        button {
-            width: 50px; height: 50px; border-radius: 12px; border: none;
-            background: #5d4037; color: #fff; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            transition: 0.2s; box-shadow: 0 4px 10px rgba(93, 64, 55, 0.3);
-        }
-        button:hover { transform: scale(1.05); background: #3e2723; }
+        button { width: 50px; height: 50px; border-radius: 12px; border: none; background: #5d4037; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         button svg { width: 24px; height: 24px; fill: currentColor; }
-
     </style>
 </head>
 <body>
@@ -142,7 +93,7 @@
         <div class="msg bot-msg">
             欢迎来到你的内心沙盘。<br><br>
             请闭上眼睛，深呼吸... <br>
-            当你的心静下来时，告诉我，你现在最想在这个沙盘的中央放一个什么物件？它是什么样子的？
+            告诉我，你现在最想在这个沙盘的中央放一个什么物件？它是什么样子的？
         </div>
     </div>
 
@@ -155,7 +106,7 @@
 </div>
 
 <script>
-    // ⚠️⚠️⚠️ 你的沙盘 Bot ID (请确认这里是对的) ⚠️⚠️⚠️
+    // ⚠️⚠️⚠️ 你的沙盘 Bot ID ⚠️⚠️⚠️
     const SANDBOX_BOT_ID = '7574847485391929396'; 
 
     const chatBox = document.getElementById('chat-box');
@@ -170,9 +121,11 @@
         addMessage(text, 'user');
         userInput.value = '';
 
+        // 显示加载动画
         const loadingId = addMessage('<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>', 'bot');
 
         let fullResponse = "";
+        
         try {
             const response = await fetch('/api/chat', {
                 method: 'POST',
@@ -187,12 +140,14 @@
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             
+            // 准备接收数据，先清空加载动画
             const loadingBubble = document.getElementById(loadingId);
             loadingBubble.innerHTML = ''; 
 
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
+                
                 const chunk = decoder.decode(value, { stream: true });
                 const lines = chunk.split('\n');
                 
@@ -204,21 +159,29 @@
 
                             const data = JSON.parse(rawJson);
                             
-                            // 🛑 核心修复：只允许 'answer' 类型
+                            // ✂️ 1. 只看 "正在打字" (delta) 的内容，防止重复
                             if (data.event === 'conversation.message.delta' && data.message && data.message.content) {
-                                // 1. 过滤掉工具调用的中间状态 (比如正在生成图片时的日志)
-                                if (data.message.type && data.message.type !== 'answer') continue;
-
                                 const content = data.message.content;
                                 
-                                // 2. 过滤掉 JSON 格式的日志
-                                if (content.trim().startsWith('{') && (content.includes('"msg_type"') || content.includes('"plugin_id"'))) {
+                                // 🛡️🛡️🛡️ 沙盘专用强力过滤器 🛡️🛡️🛡️
+                                // 过滤掉 SQL 语句、报错信息、JSON 日志
+                                if (
+                                    content.trim().startsWith('{') || 
+                                    content.includes('"msg_type"') || 
+                                    content.includes('"code":') ||
+                                    content.includes('INSERT INTO') || 
+                                    content.includes('Error 1054') ||
+                                    content.includes('构建SQL')
+                                ) {
                                     continue; 
                                 }
 
                                 fullResponse += content;
-                                // 🟢 3. 使用 Marked 解析 (这样图片 URL 就会变成真正的图片)
+                                
+                                // 🟢 关键：使用 Marked 解析 Markdown
+                                // 这样 ![image](url) 才能变成真正的图片显示出来！
                                 loadingBubble.innerHTML = marked.parse(fullResponse);
+                                
                                 chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
                             }
                         } catch(e) {}
@@ -226,7 +189,7 @@
                 }
             }
         } catch (err) {
-            document.getElementById(loadingId).innerHTML = " [连接似乎断开了，请检查网络] ";
+            document.getElementById(loadingId).innerHTML = " [网络有点卡，请重试] ";
             console.error(err);
         }
     }
