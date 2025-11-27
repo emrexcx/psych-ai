@@ -26,22 +26,36 @@
         .expert-info span { font-size: 12px; color: #8898aa; font-weight: 500; }
         .card-freud { border-top: 4px solid #e74c3c; } .card-jung { border-top: 4px solid #9b59b6; } .card-adler { border-top: 4px solid #f39c12; } .card-contemp { border-top: 4px solid #20c997; } .card-narrative { border-top: 4px solid #3498db; }
         
-        /* 🟢 诊断区样式优化 (Markdown 专用样式) */
+        /* 🟢 修复核心：强制 Markdown 样式生效 */
         .diagnosis-area { flex: 1; padding: 25px; font-size: 14px; line-height: 1.6; color: #374151; overflow-y: auto; background-color: #fff; }
         
-        /* Markdown 标签样式 */
+        /* 强制加粗可见 */
+        .diagnosis-area strong { 
+            font-weight: 900 !important; 
+            color: #000 !important; 
+            background-color: rgba(255, 215, 0, 0.15); /* 淡黄色背景高亮 */
+            padding: 0 2px;
+            border-radius: 3px;
+        }
+        
+        /* 强制列表缩进和间距 */
+        .diagnosis-area ol, .diagnosis-area ul {
+            margin-top: 10px !important;
+            margin-bottom: 10px !important;
+            padding-left: 25px !important;
+        }
+        .diagnosis-area li {
+            margin-bottom: 8px !important;
+            list-style-position: outside !important;
+        }
+        .diagnosis-area li::marker { 
+            color: var(--med-blue); 
+            font-weight: bold; 
+        }
+
         .diagnosis-area p { margin-bottom: 12px; margin-top: 0; }
-        .diagnosis-area strong { color: #111827; font-weight: 700; background: rgba(0,0,0,0.03); padding: 0 2px; border-radius: 3px; }
-        .diagnosis-area em { color: #4b5563; font-style: italic; }
-        /* 列表样式 */
-        .diagnosis-area ul, .diagnosis-area ol { padding-left: 20px; margin-bottom: 12px; }
-        .diagnosis-area li { margin-bottom: 4px; }
-        .diagnosis-area li::marker { color: var(--med-blue); font-weight: bold; }
-        /* 引用样式 */
         .diagnosis-area blockquote { border-left: 3px solid #e5e7eb; margin: 10px 0; padding-left: 15px; color: #6b7280; font-style: italic; background: #f9fafb; padding: 8px 15px; border-radius: 0 4px 4px 0; }
-        /* 标题样式 */
-        .diagnosis-area h1, .diagnosis-area h2, .diagnosis-area h3 { color: #1f2937; margin-top: 15px; margin-bottom: 8px; font-weight: 700; line-height: 1.4; }
-        .diagnosis-area h3 { font-size: 16px; border-bottom: 1px dashed #e5e7eb; padding-bottom: 5px; }
+        .diagnosis-area h3 { font-size: 16px; border-bottom: 1px dashed #e5e7eb; padding-bottom: 5px; color: #1f2937; margin-top: 15px; margin-bottom: 8px; font-weight: 700; }
 
         .diagnosis-area::-webkit-scrollbar { width: 5px; }
         .diagnosis-area::-webkit-scrollbar-thumb { background: #edf2f7; border-radius: 3px; }
@@ -75,43 +89,23 @@
     </div>
 
 <script>
-    // ⚠️⚠️⚠️ 请在此处填入你的真实 Bot ID ⚠️⚠️⚠️
+    // 🟢 1. 配置 Marked 解析器
+    marked.use({
+        breaks: true, // 允许回车换行
+        gfm: true     // 启用 GitHub 风格
+    });
+
+    // ⚠️⚠️⚠️ 这里的 Bot ID 保持你原有的设置 ⚠️⚠️⚠️
     const agents = [
-        { 
-            id: 'freud', name: 'S. Freud', title: '精神分析', theme: 'card-freud', 
-            botId: '7576937790106402857', 
-            avatar: 'images/freud2.png' 
-        },
-        { 
-            id: 'jung', name: 'C.G. Jung', title: '分析心理学', theme: 'card-jung', 
-            botId: '7576939753841508378', 
-            avatar: 'images/jung2.png' 
-        },
-        { 
-            id: 'adler', name: 'A. Adler', title: '个体心理学', theme: 'card-adler', 
-            botId: '7576940585882550326', 
-            avatar: 'images/adler2.png' 
-        },
-        { 
-            id: 'contemporary', name: 'Contemporary', title: '当代动力学', theme: 'card-contemp', 
-            botId: '7576941130223255578', 
-            avatar: 'images/contemp2.png' 
-        },
-        { 
-            id: 'narrative', name: 'Narrative', title: '叙事治疗', theme: 'card-narrative', 
-            botId: '7576941141384544262', 
-            avatar: 'images/narrative2.png' 
-        }
+        { id: 'freud', name: 'S. Freud', title: '精神分析', theme: 'card-freud', botId: '7576937790106402857', avatar: 'images/freud2.png' },
+        { id: 'jung', name: 'C.G. Jung', title: '分析心理学', theme: 'card-jung', botId: '7576939753841508378', avatar: 'images/jung2.png' },
+        { id: 'adler', name: 'A. Adler', title: '个体心理学', theme: 'card-adler', botId: '7576940585882550326', avatar: 'images/adler2.png' },
+        { id: 'contemporary', name: 'Contemporary', title: '当代动力学', theme: 'card-contemp', botId: '7576941130223255578', avatar: 'images/contemp2.png' },
+        { id: 'narrative', name: 'Narrative', title: '叙事治疗', theme: 'card-narrative', botId: '7576941141384544262', avatar: 'images/narrative2.png' }
     ];
 
     const container = document.getElementById('panels-container');
     const agentResponses = {}; 
-
-    // 🟢 初始化 Marked 配置，确保换行符能正常显示
-    marked.use({
-        breaks: true, // 允许回车换行
-        gfm: true     // 启用 GitHub 风格 Markdown
-    });
 
     function initUI() {
         container.innerHTML = '';
@@ -138,6 +132,26 @@
 
     function handleKeyPress(event) { if (event.key === 'Enter') startConsultation(); }
 
+    // 🟢 2. 核心：格式清洗与修复函数 (Fix Markdown)
+    function preprocessMarkdown(text) {
+        if (!text) return "";
+        let clean = text;
+
+        // --- A. 清洗脏数据 (Ref cleaning) ---
+        clean = clean.replace(/\[\d+\]\s*(therapy|doc)_[^\n]*/gi, ""); // 删引用文件
+        clean = clean.replace(/【.*?†source】/g, ""); // 删 Coze 引用
+        clean = clean.replace(/\[\d+\]/g, ""); // 删数字引用 [1]
+        clean = clean.replace(/[（(]\s*section\s*\d+.*?[）)]/gi, ""); // 删 section
+        
+        // --- B. 修复格式 (Fix Formatting) ---
+        // 关键：如果 "1. " 前面不是换行符，强行加两个换行
+        clean = clean.replace(/([^\n])\s*(\d+\.)/g, '$1\n\n$2');
+        // 关键：如果 "- " 或 "* " 前面不是换行符，强行加两个换行
+        clean = clean.replace(/([^\n])\s*([-\*]\s)/g, '$1\n\n$2');
+
+        return clean;
+    }
+
     async function startConsultation() {
         const input = document.getElementById('user-input');
         const btn = document.getElementById('send-btn');
@@ -157,34 +171,21 @@
             return simulateCozeAPIStream(agent.botId, experiencePrompt, (chunk) => {
                 const el = document.getElementById(`output-${agent.id}`);
                 
-                // 累加文字
+                // 累加数据
                 agentResponses[agent.id] += chunk;
 
-                // 🟢 终极清洗逻辑：专治各种顽固引用
-                let cleanText = agentResponses[agent.id];
+                // 🟢 3. 先清洗，再渲染
+                const rawText = agentResponses[agent.id];
+                const cleanText = preprocessMarkdown(rawText);
 
-                // 1. 删掉引用 [1] therapy_...
-                cleanText = cleanText.replace(/\[\d+\]\s*(therapy|doc)_[^\n]*/gi, "");
-                
-                // 2. 删掉裸露文件名 (therapy_...)
-                cleanText = cleanText.replace(/(therapy|doc)_[^\n]+/gi, "");
-
-                // 3. 删掉 (section X)
-                cleanText = cleanText.replace(/[（(]\s*section\s*\d+.*?[）)]/gi, "");
-
-                // 4. 删掉注解 (注: ...)
-                cleanText = cleanText.replace(/[（(]\s*注[:：][\s\S]*?[）)]/g, "");
-
-                // 5. 删掉 Coze 特殊标记
-                cleanText = cleanText.replace(/【.*?†source】/g, "");
-                
-                // 6. 删掉纯数字标号
-                cleanText = cleanText.replace(/\[\d+\]/g, "");
-
-                // 🟢 核心修改：使用 marked 解析 Markdown 并渲染
-                // 之前你的代码有 marked.parse 但没有配套 CSS，现在 CSS 已添加
-                el.innerHTML = marked.parse(cleanText);
-                el.scrollTop = el.scrollHeight;
+                try {
+                    // 使用 marked 解析
+                    el.innerHTML = marked.parse(cleanText);
+                    // 滚动到底部
+                    el.scrollTop = el.scrollHeight;
+                } catch (e) {
+                    el.innerText = cleanText;
+                }
             });
         });
 
@@ -195,7 +196,6 @@
     // --- 真实 API 调用 ---
     async function simulateCozeAPIStream(botId, fullPrompt, callback) {
         if(!botId) return;
-
         try {
             const response = await fetch('/api/chat', {
                 method: 'POST',
@@ -209,7 +209,6 @@
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
-            let isFirst = true;
 
             while (true) {
                 const { done, value } = await reader.read();
@@ -222,10 +221,6 @@
                         try {
                             const data = JSON.parse(line.slice(5));
                             if (data.event === 'conversation.message.delta' && data.message && data.message.content) {
-                                if(isFirst) {
-                                    if(!data.message.content.trim()) continue;
-                                    isFirst = false; 
-                                }
                                 callback(data.message.content);
                             }
                         } catch(e) {}
