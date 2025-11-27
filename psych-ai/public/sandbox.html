@@ -21,8 +21,6 @@
             background: radial-gradient(circle, rgba(0,0,0,0) 0%, rgba(0,0,0,0.4) 100%);
             pointer-events: none; z-index: -1;
         }
-
-        /* 主面板 */
         #sandbox-panel {
             width: 90%; max-width: 550px; height: 85vh;
             background: rgba(255, 255, 255, 0.85);
@@ -33,39 +31,29 @@
             animation: floatUp 0.8s ease;
         }
         @keyframes floatUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-
         .header { padding: 20px; text-align: center; border-bottom: 1px solid rgba(0,0,0,0.05); position: relative; }
         .header h1 { margin: 0; font-size: 18px; color: #333; letter-spacing: 4px; }
         .header p { margin: 5px 0 0; font-size: 12px; color: #666; }
-        
         .home-btn {
             position: absolute; left: 20px; top: 50%; transform: translateY(-50%);
             text-decoration: none; color: #666; font-size: 14px; border: 1px solid #999; 
             padding: 4px 10px; border-radius: 20px; transition: 0.3s;
         }
         .home-btn:hover { background: #333; color: #fff; }
-
-        /* 聊天区 */
         #chat-box {
             flex: 1; overflow-y: auto; padding: 25px;
             display: flex; flex-direction: column; gap: 20px; scroll-behavior: smooth;
         }
         #chat-box::-webkit-scrollbar { width: 0; }
-
         .msg {
             max-width: 85%; padding: 15px 20px; border-radius: 18px;
             line-height: 1.6; font-size: 15px; position: relative;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
-        
-        /* 机器人消息 */
         .bot-msg { align-self: flex-start; background: #fff; color: #444; border-bottom-left-radius: 4px; }
         .bot-msg img { max-width: 100%; border-radius: 10px; margin-top: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
         .bot-msg p { margin: 0 0 10px 0; } .bot-msg p:last-child { margin-bottom: 0; }
-
-        /* 用户消息 */
         .user-msg { align-self: flex-end; background: #8d6e63; color: #fff; border-bottom-right-radius: 4px; }
-
         .input-area { padding: 20px; background: rgba(255,255,255,0.5); display: flex; gap: 10px; border-top: 1px solid rgba(255,255,255,0.3); }
         input { flex: 1; padding: 15px; border: none; border-radius: 12px; background: rgba(255,255,255,0.8); outline: none; font-family: inherit; color: #333; }
         input:focus { background: #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
@@ -99,7 +87,7 @@
 </div>
 
 <script>
-    // ⚠️⚠️⚠️ 你的沙盘 Bot ID (请确认) ⚠️⚠️⚠️
+    // ⚠️⚠️⚠️ 替换为你的沙盘 Bot ID ⚠️⚠️⚠️
     const SANDBOX_BOT_ID = '7574847485391929396'; 
 
     const chatBox = document.getElementById('chat-box');
@@ -114,20 +102,14 @@
         addMessage(text, 'user');
         userInput.value = '';
 
-        // 显示加载动画
-        const loadingId = addMessage('<span style="color:#aaa">...思考中...</span>', 'bot');
-
+        const loadingId = addMessage('<span style="color:#aaa">沙盘生成中...</span>', 'bot');
         let fullResponse = "";
         
         try {
             const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    query: text,
-                    bot_id: SANDBOX_BOT_ID,
-                    conversation_id: "sandbox_" + Date.now() 
-                })
+                body: JSON.stringify({ query: text, bot_id: SANDBOX_BOT_ID })
             });
 
             const reader = response.body.getReader();
@@ -148,31 +130,24 @@
                         try {
                             const rawJson = line.slice(5).trim();
                             if (rawJson === '[DONE]') continue;
-
                             const data = JSON.parse(rawJson);
-                            
-                            // ✂️ 剪刀1：只接收 "正在打字" (delta) 消息，解决重复问题
-                            if (data.event !== 'conversation.message.delta') continue;
 
+                            // ✅ 宽容模式：只要有内容就显示！
                             if (data.message && data.message.content) {
-                                // ✂️ 剪刀2：拦截 "追问建议" (follow_up)
-                                if (data.message.type === 'follow_up') continue;
-
                                 const content = data.message.content;
                                 
-                                // 🛡️ 过滤器：拦截 SQL 代码、JSON 日志
+                                // 🛡️ 过滤器：只拦截 JSON 乱码
+                                // (如果这一行看起来像代码，就跳过，否则都显示)
                                 if (
                                     content.trim().startsWith('{') || 
                                     content.includes('"msg_type"') || 
-                                    content.includes('INSERT INTO') || 
-                                    content.includes('Error 1054') 
+                                    content.includes('INSERT INTO') ||
+                                    content.includes('Error 1054')
                                 ) {
                                     continue; 
                                 }
 
                                 fullResponse += content;
-                                
-                                // 🟢 实时 Markdown 渲染 (保证图片能出来)
                                 loadingBubble.innerHTML = marked.parse(fullResponse);
                                 chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
                             }
@@ -181,7 +156,7 @@
                 }
             }
         } catch (err) {
-            document.getElementById(loadingId).innerHTML = " [网络连接中断] ";
+            document.getElementById(loadingId).innerHTML = " [网络波动，请重试] ";
         }
     }
 
