@@ -20,7 +20,7 @@
         #chat-box::-webkit-scrollbar { width: 0; }
         .msg { max-width: 85%; padding: 15px 20px; border-radius: 18px; line-height: 1.6; font-size: 15px; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .bot-msg { align-self: flex-start; background: #fff; color: #444; border-bottom-left-radius: 4px; }
-        .bot-msg img { max-width: 100%; border-radius: 10px; margin-top: 10px; display: block; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .bot-msg img { max-width: 100%; border-radius: 12px; margin-top: 10px; display: block; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
         .bot-msg p { margin: 0 0 10px 0; } .bot-msg p:last-child { margin-bottom: 0; }
         .user-msg { align-self: flex-end; background: #8d6e63; color: #fff; border-bottom-right-radius: 4px; }
         .input-area { padding: 20px; background: rgba(255,255,255,0.5); display: flex; gap: 10px; border-top: 1px solid rgba(255,255,255,0.3); }
@@ -57,7 +57,7 @@
 </div>
 
 <script>
-    // ⚠️⚠️⚠️ 替换你的 Bot ID ⚠️⚠️⚠️
+    // ⚠️⚠️⚠️ 你的沙盘 Bot ID ⚠️⚠️⚠️
     const SANDBOX_BOT_ID = '7574847485391929396'; 
 
     const chatBox = document.getElementById('chat-box');
@@ -109,41 +109,50 @@
 
                             const data = JSON.parse(rawJson);
                             
-                            // ✂️ 只接收 delta (正在打字)
+                            // ✂️ 只看 delta (正在打字)
                             if (data.event === 'conversation.message.delta' && data.message) {
+                                
+                                // 🚫 1. 坚决屏蔽 "追问" (Follow-up)
+                                // 这是唯一的死刑标准：只要是追问，就杀！
+                                if (data.message.type === 'follow_up') continue;
+
                                 let content = data.message.content;
                                 if (!content) continue;
 
-                                // 🟢 关键修改：图片检测逻辑更宽容
-                                // 只要包含 ![ (Markdown图片) 或者 s.coze.cn (Coze图片域名)，就认为是好消息，放行！
-                                const isImage = content.includes('![') || content.includes('s.coze.cn');
-                                const isAnswer = data.message.type === 'answer';
-
-                                // 只有是正式回答，或者包含图片时才显示
-                                if (isAnswer || isImage) {
-                                    
-                                    // 🚫 拦截追问
-                                    if (data.message.type === 'follow_up') continue;
-
-                                    // 🛡️ 拦截代码日志
-                                    if (
-                                        content.trim().startsWith('{') || 
-                                        content.includes('"msg_type"') || 
-                                        content.includes('FunctionCall') || 
-                                        content.includes('INSERT INTO')
-                                    ) {
-                                        continue; 
-                                    }
-
-                                    // 🛠️ 如果是裸链接，强制转 Markdown
-                                    if (content.includes('s.coze.cn') && !content.includes('![')) {
-                                        content = `\n![沙盘](${content})\n`;
-                                    }
-
-                                    fullResponse += content;
-                                    loadingBubble.innerHTML = marked.parse(fullResponse);
-                                    chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
+                                // 🟢 2. 多模态解析 (如果发来的是 JSON 数组)
+                                if (content.trim().startsWith('[')) {
+                                    try {
+                                        const items = JSON.parse(content);
+                                        let parsedContent = "";
+                                        items.forEach(item => {
+                                            if(item.type === 'text') parsedContent += item.text;
+                                            if(item.type === 'image') parsedContent += `\n\n![沙盘](${item.file_url})\n\n`;
+                                        });
+                                        content = parsedContent;
+                                    } catch(e) {}
                                 }
+                                
+                                // 🛡️ 3. 垃圾代码拦截 (黑名单)
+                                // 只有明确长得像垃圾的才拦截，其他的都放行！
+                                if (
+                                    content.trim().startsWith('{') || 
+                                    content.includes('"msg_type"') || 
+                                    content.includes('FunctionCall') || 
+                                    content.includes('INSERT INTO') ||
+                                    content.includes('streaming reply')
+                                ) {
+                                    continue; 
+                                }
+
+                                // 🛠️ 4. 图片链接急救
+                                // 如果内容里有 http...png 但没有 ![] 标签，手动加上！
+                                if (content.match(/https?:\/\/[^\s"']+\.(png|jpg|jpeg|webp)/) && !content.includes('![')) {
+                                    content = content.replace(/(https?:\/\/[^\s"']+\.(png|jpg|jpeg|webp))/g, '\n\n![沙盘]($1)\n\n');
+                                }
+
+                                fullResponse += content;
+                                loadingBubble.innerHTML = marked.parse(fullResponse);
+                                chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
                             }
                         } catch(e) {}
                     }
