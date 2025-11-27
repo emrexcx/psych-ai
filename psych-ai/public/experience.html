@@ -167,51 +167,56 @@
         btn.disabled = false; btn.innerText = '开始会诊';
     }
 
-    // --- 真实 API 调用 ---
-    async function simulateCozeAPIStream(botId, fullPrompt, callback) {
-        if(!botId) return;
+// 2. 核心逻辑：并发调用 API
+    async function startConsultation() {
+        const input = document.getElementById('user-input');
+        const btn = document.getElementById('send-btn');
+        const query = input.value.trim();
+        if(!query) return;
 
-        try {
-            const response = await fetch('/api/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    query: fullPrompt,
-                    bot_id: botId,
-                    conversation_id: "exp_" + Date.now()
-                })
-            });
+        input.value = ''; btn.disabled = true; btn.innerText = '分析进行中...';
 
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let isFirst = true;
+        agents.forEach(agent => {
+            agentResponses[agent.id] = ""; 
+            document.getElementById(`output-${agent.id}`).innerHTML = '<div style="color:#007bff; display:flex; align-items:center; gap:5px;"><i>⏳</i> 正在生成独立报告...</div>';
+        });
 
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                const chunk = decoder.decode(value, { stream: true });
-                const lines = chunk.split('\n');
+        const experiencePrompt = `【指令：现在是专业的心理咨询会诊模式。请忽略其他专家的存在，基于你的理论流派，提供一份独立、冷静、深度的分析报告。语气要专业、客观。不要攻击他人。】\n\n用户困扰：${query}`;
+
+        const tasks = agents.map(agent => {
+            return simulateCozeAPIStream(agent.botId, experiencePrompt, (chunk, isFirstChunk) => {
+                const el = document.getElementById(`output-${agent.id}`);
                 
-                for (const line of lines) {
-                    if (line.startsWith('data:') && line.length > 5) {
-                        try {
-                            const data = JSON.parse(line.slice(5));
-                            if (data.event === 'conversation.message.delta' && data.message && data.message.content) {
-                                if(isFirst) {
-                                    // 过滤开头的换行或空格
-                                    if(!data.message.content.trim()) continue;
-                                    isFirst = false; 
-                                }
-                                callback(data.message.content);
-                            }
-                        } catch(e) {}
-                    }
-                }
-            }
-        } catch (err) {
-            callback("[网络连接错误]");
-        }
+                // 累加文字
+                agentResponses[agent.id] += chunk;
+
+                // 🟢 核弹级清洗逻辑 🟢
+                let cleanText = agentResponses[agent.id];
+
+                // 1. 删掉所有 [1] [20] 这种纯数字引用标
+                cleanText = cleanText.replace(/\[\d+\]/g, "");
+
+                // 2. 删掉文件名 (therapy_xxx)
+                cleanText = cleanText.replace(/therapy_[^\s\n)）]+/gi, "");
+
+                // 3. 删掉 (section X) 或 section X
+                cleanText = cleanText.replace(/[(（]?\s*section\s*\d+\s*[)）]?/gi, "");
+
+                // 4. 删掉 Coze 特殊标记
+                cleanText = cleanText.replace(/【.*?†source】/g, "");
+                
+                // 5. 删掉文末残留的孤立括号 [ (例如截图里的 "[ ")
+                cleanText = cleanText.replace(/\[\s*$/g, "");
+
+                // 6. (可选) 如果你想把整段 "参考《...》" 都删掉，加上这句：
+                // cleanText = cleanText.replace(/参考《.*?》.*?(\n|$)/g, "");
+
+                // 渲染
+                el.innerHTML = marked.parse(cleanText);
+                el.scrollTop = el.scrollHeight;
+            });
+        });
+
+        await Promise.all(tasks);
+        btn.disabled = false; btn.innerText = '开始会诊';
     }
-</script>
-</body>
-</html>
