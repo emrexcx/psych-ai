@@ -1,4 +1,4 @@
-// api/chat.js (智能过滤版 - 完美解决双重输出)
+// api/chat.js (非流式稳定版)
 export const config = {
   runtime: 'edge',
 };
@@ -8,101 +8,80 @@ export default async function handler(req) {
 
   try {
     const { query, bot_id, conversation_id } = await req.json();
-    
-    // 1. 保持 stream: true，为了打字机效果
+    const COZE_API_KEY = process.env.COZE_API_KEY;
+
+    // 1. 发送请求给 Coze (内部依然用流式，因为这样获取数据最稳，不用写轮询逻辑)
     const response = await fetch('https://api.coze.cn/v3/chat', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.COZE_API_TOKEN}`,
+        'Authorization': `Bearer ${COZE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         bot_id: bot_id,
-        user_id: "web_user_" + Date.now(),
-        stream: true, // 必须是 true
+        user_id: "web_user",
+        stream: true, // 保持 true，我们在后端拼好再发给前端
         auto_save_history: true,
+        // ⚠️ 关键修复：如果你之前觉得“全部没了”，可能是因为没把 conversation_id 传回去
+        ...(conversation_id && { conversation_id }), 
         additional_messages: [{ role: "user", content: query, content_type: "text" }]
       }),
     });
 
     if (!response.ok) {
-      const err = await response.text();
-      return new Response(JSON.stringify({ error: err }), { status: 500 });
+      return new Response(JSON.stringify({ error: "Coze API Error" }), { status: response.status });
     }
 
-    // 2. 建立过滤管道
-    const encoder = new TextEncoder();
-    const decoder = new TextDecoder();
+    // 2. 接收流并拼接所有内容
     const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let fullContent = ""; // 用于存放最终的完整回复
+    let finalConversationId = conversation_id; // 尝试抓取新的会话ID
 
-    const stream = new ReadableStream({
-      async start(controller) {
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            
-            const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split('\n');
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-            for (const line of lines) {
-              if (line.startsWith('data:') && line.length > 5) {
-                try {
-                  const rawJson = line.slice(5).trim();
-                  // Coze 有时候会发一个 [DONE]
-                  if (rawJson === '[DONE]') continue;
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
 
-                  const data = JSON.parse(rawJson);
+        for (const line of lines) {
+          if (line.includes('"content"')) {
+            try {
+              // 提取 JSON
+              const jsonStr = line.substring(line.indexOf('{'));
+              const data = JSON.parse(jsonStr);
 
-                  // 🛡️🛡️🛡️ 核心过滤器 (根据你提供的文档截图) 🛡️🛡️🛡️
+              // 尝试抓取 conversation_id (防止第一句没ID导致上下文丢失)
+              if (data.conversation_id) {
+                finalConversationId = data.conversation_id;
+              }
 
-                  // 1. 只允许 "message.delta" (正在打字)
-                  // ❌ 坚决拦截 "message.completed" (这就解决了双重输出！)
-                  if (data.event !== 'conversation.message.delta') continue;
-
-                  // 2. 检查消息内容
-                  if (data.message && data.message.content) {
-                     const content = data.message.content;
-                     const type = data.message.type;
-
-                     // ❌ 拦截 "follow_up" (追问建议)
-                     if (type === 'follow_up') continue;
-                     
-                     // ❌ 拦截 "verbose" (冗余包)
-                     if (type === 'verbose') continue;
-
-                     // ❌ 拦截代码日志 (msg_type)
-                     if (content.trim().startsWith('{') || content.includes('msg_type')) continue;
-                     
-                     // ✅ 只有通过了上面所有关卡的，才是真正的“人话”
-                     // 我们把它重新打包成 SSE 格式发给前端
-                     const cleanData = JSON.stringify({
-                         event: 'conversation.message.delta',
-                         message: { content: content, type: 'answer' }
-                     });
-                     controller.enqueue(encoder.encode(`data: ${cleanData}\n\n`));
-                  }
-
-                } catch (e) {
-                  // JSON 解析失败不用管
+              // 拼接内容
+              if (data.content || data.message?.content) {
+                const text = data.content || data.message.content;
+                // 过滤掉非内容的系统指令
+                if (!text.includes('card_type') && data.type !== 'follow_up') {
+                   fullContent += text;
                 }
               }
+            } catch (e) {
+              // 忽略解析错误，继续处理下一行
             }
           }
-        } catch (err) {
-          console.error('Stream error:', err);
-        } finally {
-          controller.close();
         }
       }
-    });
+    } catch (err) {
+      console.error("Stream parsing error:", err);
+    }
 
-    return new Response(stream, {
-      headers: { 
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive'
-      }
+    // 3. 最终一次性返回标准 JSON (前端不再需要处理流)
+    return new Response(JSON.stringify({
+      content: fullContent,
+      conversation_id: finalConversationId // 把 ID 返还给前端，保证下次对话能接上
+    }), {
+      headers: { 'Content-Type': 'application/json' }
     });
 
   } catch (error) {
