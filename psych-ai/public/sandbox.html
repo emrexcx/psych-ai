@@ -7,7 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
-        /* 保持原有样式不变 */
+        /* 保持样式不变 */
         body { margin: 0; height: 100vh; font-family: 'Zen Maru Gothic', sans-serif; color: #4a4a4a; background-color: #d7ccc8; background-image: url('images/sandbox_bg.jpg'), url('https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?q=80&w=2070'); background-size: cover; background-position: center; background-repeat: no-repeat; display: flex; justify-content: center; align-items: center; overflow: hidden; }
         body::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle, rgba(0,0,0,0) 0%, rgba(0,0,0,0.4) 100%); pointer-events: none; z-index: -1; }
         #sandbox-panel { width: 90%; max-width: 550px; height: 85vh; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px) saturate(180%); border-radius: 24px; border: 1px solid rgba(255, 255, 255, 0.6); box-shadow: 0 30px 60px rgba(0,0,0,0.3); display: flex; flex-direction: column; overflow: hidden; animation: floatUp 0.8s ease; }
@@ -21,9 +21,13 @@
         #chat-box::-webkit-scrollbar { width: 0; }
         .msg { max-width: 85%; padding: 15px 20px; border-radius: 18px; line-height: 1.6; font-size: 15px; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .bot-msg { align-self: flex-start; background: #fff; color: #444; border-bottom-left-radius: 4px; }
-        .bot-msg img { max-width: 100%; border-radius: 12px; margin-top: 10px; display: block; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        /* ✅ 图片自适应优化 */
+        .bot-msg img { max-width: 100%; border-radius: 10px; margin-top: 10px; display: block; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
         .bot-msg p { margin: 0 0 10px 0; } .bot-msg p:last-child { margin-bottom: 0; }
         .user-msg { align-self: flex-end; background: #8d6e63; color: #fff; border-bottom-right-radius: 4px; }
+        .typing-dot { display: inline-block; width: 6px; height: 6px; background: #aaa; border-radius: 50%; margin: 0 2px; animation: bounce 1.4s infinite; }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; } .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
         .input-area { padding: 20px; background: rgba(255,255,255,0.5); display: flex; gap: 10px; border-top: 1px solid rgba(255,255,255,0.3); }
         input { flex: 1; padding: 15px; border: none; border-radius: 12px; background: rgba(255,255,255,0.8); outline: none; font-family: inherit; color: #333; }
         input:focus { background: #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
@@ -58,7 +62,7 @@
 </div>
 
 <script>
-    // ⚠️⚠️⚠️ 你的沙盘 Bot ID ⚠️⚠️⚠️
+    // ⚠️⚠️⚠️ 确认 ID ⚠️⚠️⚠️
     const SANDBOX_BOT_ID = '7574847485391929396'; 
 
     const chatBox = document.getElementById('chat-box');
@@ -71,14 +75,11 @@
         const text = userInput.value.trim();
         if(!text) return;
 
-        // 禁用按钮防止重复提交
         sendBtn.disabled = true;
-        
         addMessage(text, 'user');
         userInput.value = '';
 
-        // 创建一个“思考中”的气泡
-        const loadingId = addMessage('<span style="color:#aaa">...沙盘构建中，生成图片约需20秒...</span>', 'bot');
+        const loadingId = addMessage('<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>', 'bot');
         let fullResponse = "";
         
         try {
@@ -87,7 +88,8 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     query: text,
-                    bot_id: SANDBOX_BOT_ID
+                    bot_id: SANDBOX_BOT_ID,
+                    conversation_id: "sandbox_" + Date.now() 
                 })
             });
 
@@ -95,8 +97,8 @@
             const decoder = new TextDecoder();
             
             const loadingBubble = document.getElementById(loadingId);
-            
-            // 开始接收数据流
+            loadingBubble.innerHTML = ''; 
+
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
@@ -112,47 +114,27 @@
 
                             const data = JSON.parse(rawJson);
                             
-                            // ✂️ 核心逻辑：只看 delta (打字流)
-                            if (data.event === 'conversation.message.delta' && data.message) {
-                                
-                                // 🚫 拦截追问
-                                if (data.message.type === 'follow_up') continue;
-
+                            // ✂️ 核心修改：只允许 'answer' 类型的 delta 消息通过
+                            // 这能彻底屏蔽 FunctionCall, verbose, follow_up 等所有乱码
+                            if (
+                                data.event === 'conversation.message.delta' && 
+                                data.message && 
+                                data.message.type === 'answer' // 👈 关键！只准回答通过！
+                            ) {
                                 let content = data.message.content;
                                 if (!content) continue;
 
-                                // 🛡️ 拦截乱码日志
-                                if (content.trim().startsWith('{') || 
-                                    content.includes('"msg_type"') || 
-                                    content.includes('FunctionCall') || 
-                                    content.includes('INSERT INTO')) {
-                                    continue;
+                                // 🟢 智能图片解析：如果内容里藏着链接，强制转成图片显示
+                                // (防止 Coze 没用 Markdown 格式，只发了裸链接)
+                                if (content.includes('http') && (content.includes('.png') || content.includes('.jpg') || content.includes('.webp'))) {
+                                    // 把链接提取出来，包装成 Markdown 图片
+                                    content = content.replace(/(https?:\/\/[^\s)]+\.(?:png|jpg|jpeg|webp))/g, '\n\n![沙盘]($1)\n\n');
                                 }
 
-                                // 🟢 多模态图片解析 (重点)
-                                if (content.trim().startsWith('[')) {
-                                    // 有时候 Coze 会分段发，所以我们要累积起来再解析
-                                    // 或者它直接发来了一整段 Markdown 链接
-                                    try {
-                                        const items = JSON.parse(content);
-                                        items.forEach(item => {
-                                            if (item.type === 'image') {
-                                                // 把它变成 Markdown 图片格式
-                                                fullResponse += `\n![Image](${item.file_url})\n`;
-                                            } else if (item.type === 'text') {
-                                                fullResponse += item.text;
-                                            }
-                                        });
-                                        // 如果解析成功，就不直接加 content 了
-                                        content = ""; 
-                                    } catch(e) {
-                                        // 如果解析 JSON 失败，就把它当普通文本（防止报错）
-                                    }
-                                }
+                                // 🛡️ 双重保险：拦截 JSON 代码
+                                if (content.trim().startsWith('{')) continue;
 
                                 fullResponse += content;
-                                
-                                // 实时渲染
                                 loadingBubble.innerHTML = marked.parse(fullResponse);
                                 chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
                             }
@@ -161,7 +143,7 @@
                 }
             }
         } catch (err) {
-            document.getElementById(loadingId).innerHTML = " [网络连接超时，请刷新重试] ";
+            document.getElementById(loadingId).innerHTML = " [网络连接中断] ";
         } finally {
             sendBtn.disabled = false;
         }
@@ -180,5 +162,5 @@
 </script>
 </body>
 </html>
-</html>
+
 
