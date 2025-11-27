@@ -54,13 +54,13 @@
 
     <div class="input-wrapper">
         <div class="input-group">
-            <input type="text" id="user-input" placeholder="请详细描述您的困扰..." onkeypress="handleKeyPress(event)">
+            <input type="text" id="user-input" placeholder="请详细描述您的困扰，获取多维度的独立诊断..." onkeypress="handleKeyPress(event)">
             <button id="send-btn" onclick="startConsultation()">开始会诊</button>
         </div>
     </div>
 
 <script>
-    // ⚠️⚠️⚠️ 再次确认：请填入真实的 Bot ID ⚠️⚠️⚠️
+    // ⚠️⚠️⚠️ 必填：请把 ID 换成你自己的！ ⚠️⚠️⚠️
     const agents = [
         { 
             id: 'freud', name: 'S. Freud', title: '精神分析', theme: 'card-freud', 
@@ -133,73 +133,25 @@
         const experiencePrompt = `【指令：现在是专业的心理咨询会诊模式。请忽略其他专家的存在，基于你的理论流派，提供一份独立、冷静、深度的分析报告。语气要专业、客观。不要攻击他人。】\n\n用户困扰：${query}`;
 
         const tasks = agents.map(agent => {
-            return simulateCozeAPIStream(agent.botId, experiencePrompt, (chunk, isFirstChunk) => {
+            return simulateCozeAPIStream(agent.botId, experiencePrompt, (chunk) => {
                 const el = document.getElementById(`output-${agent.id}`);
                 
                 // 累加文字
                 agentResponses[agent.id] += chunk;
 
-                // 🟢 强力清洗逻辑 🟢
-                let cleanText = agentResponses[agent.id];
-                
-                // 1. 暴力删除以 [数字] therapy_ 或 [数字] doc_ 开头的一整行或一大段
-                // 说明：(?=...) 是前瞻断言，匹配到下一个换行符为止
-                cleanText = cleanText.replace(/\[\d+\]\s*(therapy|doc)_.+?(\n|$)/g, "");
-                
-                // 2. 删除 Coze 特殊引用标记 【†source】
-                cleanText = cleanText.replace(/【.*?†source】/g, "");
-                
-                // 3. 删除正文中残留的 [1] [2] 这种纯数字引用标（可选，如果你想留着正文里的标号，可以删掉这行）
-                cleanText = cleanText.replace(/\[\d+\]/g, "");
-
-                // 渲染
-                el.innerHTML = marked.parse(cleanText);
-                el.scrollTop = el.scrollHeight;
-            });
-        });
-
-        await Promise.all(tasks);
-        btn.disabled = false; btn.innerText = '开始会诊';
-    }
-
-// 2. 核心逻辑：并发调用 API
-    async function startConsultation() {
-        const input = document.getElementById('user-input');
-        const btn = document.getElementById('send-btn');
-        const query = input.value.trim();
-        if(!query) return;
-
-        input.value = ''; btn.disabled = true; btn.innerText = '分析进行中...';
-
-        agents.forEach(agent => {
-            agentResponses[agent.id] = ""; 
-            document.getElementById(`output-${agent.id}`).innerHTML = '<div style="color:#007bff; display:flex; align-items:center; gap:5px;"><i>⏳</i> 正在生成独立报告...</div>';
-        });
-
-        const experiencePrompt = `【指令：现在是专业的心理咨询会诊模式。请忽略其他专家的存在，基于你的理论流派，提供一份独立、冷静、深度的分析报告。语气要专业、客观。不要攻击他人。】\n\n用户困扰：${query}`;
-
-        const tasks = agents.map(agent => {
-            return simulateCozeAPIStream(agent.botId, experiencePrompt, (chunk, isFirstChunk) => {
-                const el = document.getElementById(`output-${agent.id}`);
-                
-                // 累加文字
-                agentResponses[agent.id] += chunk;
-
-                // 🟢 终极强力清洗逻辑 🟢
+                // 🟢 终极清洗逻辑：专治各种顽固引用
                 let cleanText = agentResponses[agent.id];
 
-                // 1. 删掉标准引用 [1] therapy_...
+                // 1. 删掉引用 [1] therapy_...
                 cleanText = cleanText.replace(/\[\d+\]\s*(therapy|doc)_[^\n]*/gi, "");
                 
-                // 2. 删掉裸露的文件名 (如截图里的 "therapy_自体的重建...")
-                // 逻辑：只要看到 therapy_ 开头，就把这一长串直到换行符都删掉
+                // 2. 删掉裸露文件名 (therapy_...)
                 cleanText = cleanText.replace(/(therapy|doc)_[^\n]+/gi, "");
 
-                // 3. 删掉内部索引 (section 4) (section 1)
+                // 3. 删掉 (section X)
                 cleanText = cleanText.replace(/[（(]\s*section\s*\d+.*?[）)]/gi, "");
 
-                // 4. 删掉注解 (注: ...) 或 （注：...）
-                // 逻辑：匹配括号开头，紧接着"注"字的内容
+                // 4. 删掉注解 (注: ...)
                 cleanText = cleanText.replace(/[（(]\s*注[:：][\s\S]*?[）)]/g, "");
 
                 // 5. 删掉 Coze 特殊标记
@@ -214,3 +166,52 @@
         await Promise.all(tasks);
         btn.disabled = false; btn.innerText = '开始会诊';
     }
+
+    // --- 真实 API 调用 ---
+    async function simulateCozeAPIStream(botId, fullPrompt, callback) {
+        if(!botId) return;
+
+        try {
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    query: fullPrompt,
+                    bot_id: botId,
+                    conversation_id: "exp_" + Date.now()
+                })
+            });
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let isFirst = true;
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split('\n');
+                
+                for (const line of lines) {
+                    if (line.startsWith('data:') && line.length > 5) {
+                        try {
+                            const data = JSON.parse(line.slice(5));
+                            if (data.event === 'conversation.message.delta' && data.message && data.message.content) {
+                                if(isFirst) {
+                                    // 过滤开头的换行或空格
+                                    if(!data.message.content.trim()) continue;
+                                    isFirst = false; 
+                                }
+                                callback(data.message.content);
+                            }
+                        } catch(e) {}
+                    }
+                }
+            }
+        } catch (err) {
+            callback("[网络连接错误]");
+        }
+    }
+</script>
+</body>
+</html>
