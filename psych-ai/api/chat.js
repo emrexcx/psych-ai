@@ -1,4 +1,4 @@
-// api/chat.js (后端清洗 + 稳健流式版)
+// api/chat.js
 export const config = {
   runtime: 'edge',
 };
@@ -8,12 +8,12 @@ export default async function handler(req) {
 
   try {
     const { query, bot_id, conversation_id } = await req.json();
-    const COZE_API_TOKEN = process.env.COZE_API_TOKEN;
+    const COZE_API_KEY = process.env.COZE_API_KEY;
 
     const response = await fetch('https://api.coze.cn/v3/chat', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${COZE_API_TOKEN}`,
+        'Authorization': `Bearer ${COZE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -21,8 +21,6 @@ export default async function handler(req) {
         user_id: "web_user",
         stream: true,
         auto_save_history: true,
-        // 关键：带上 conversation_id 保持上下文
-        ...(conversation_id && { conversation_id }),
         additional_messages: [{ role: "user", content: query, content_type: "text" }]
       }),
     });
@@ -37,82 +35,69 @@ export default async function handler(req) {
     const stream = new ReadableStream({
       async start(controller) {
         const reader = response.body.getReader();
-        let buffer = '';
+        let currentEvent = ''; 
+        let buffer = ''; // 🟢 1. 新增：缓存池，用于拼接被切断的数据
 
         try {
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
+            // 🟢 2. 解码并追加到 buffer，而不是直接处理 chunk
             buffer += decoder.decode(value, { stream: true });
+            
+            // 🟢 3. 按换行符切割，但保留最后一个可能不完整的部分
             const lines = buffer.split('\n');
-            buffer = lines.pop(); // 保留未完成的行
+            buffer = lines.pop(); // 将数组最后一行（可能不完整）拿出来放回 buffer，等待下一个 chunk
 
             for (const line of lines) {
-              const trimmed = line.trim();
-              if (trimmed.startsWith('data:')) {
-                const jsonStr = trimmed.substring(5).trim();
-                if (jsonStr === '[DONE]') continue;
+              const trimmedLine = line.trim();
+              if (!trimmedLine) continue;
 
-                try {
-                  const data = JSON.parse(jsonStr);
+              // 捕捉 event 类型
+              if (trimmedLine.startsWith('event:')) {
+                currentEvent = trimmedLine.replace('event:', '').trim();
+                continue;
+              }
 
-                  // 🛡️🛡️🛡️ 后端清洗核心 🛡️🛡️🛡️
-                  
-                  // 1. 只通过 delta (正在打字)，拦截 completed (防止重复)
-                  if (data.event === 'conversation.message.delta' && data.message) {
+              // 处理 data 数据
+              if (trimmedLine.startsWith('data:')) {
+                // Coze 返回的数据有时是 "data: {...}"
+                const dataStr = trimmedLine.replace('data:', '').trim();
+                
+                // 如果是 conversation.message.delta 且包含内容
+                if (currentEvent === 'conversation.message.delta') {
+                  try {
+                    const data = JSON.parse(dataStr);
                     
-                    // 2. 拦截 follow_up (追问) 和 verbose (冗余)
-                    if (data.message.type === 'follow_up' || data.message.type === 'verbose') continue;
-
-                    let content = data.message.content;
-                    if (!content) continue;
-
-                    // 3. 智能提取图片 (针对多模态数据)
-                    // 如果内容是 JSON 数组 (比如 [{"type":"image"...}])
-                    if (content.startsWith('[')) {
-                        try {
-                            const items = JSON.parse(content);
-                            let parsed = "";
-                            items.forEach(item => {
-                                if (item.type === 'text') parsed += item.text;
-                                if (item.type === 'image') parsed += `\n![Image](${item.file_url})\n`;
-                            });
-                            content = parsed;
-                        } catch(e) {}
+                    // 兼容 content 在根节点或 message 节点的情况
+                    const content = data.content || data.message?.content;
+                    
+                    if (content && !content.includes('card_type')) {
+                      const msg = JSON.stringify({
+                        event: 'conversation.message.delta',
+                        message: { content: content }
+                      });
+                      controller.enqueue(encoder.encode(`data: ${msg}\n\n`));
                     }
-
-                    // 4. 拦截垃圾代码日志
-                    if (content.trim().startsWith('{') || 
-                        content.includes('msg_type') || 
-                        content.includes('FunctionCall')) {
-                        continue;
-                    }
-
-                    // ✅ 发送清洗后的纯文本给前端
-                    // 使用自定义分隔符，防止 JSON 格式错误
-                    controller.enqueue(encoder.encode(content));
+                  } catch (e) {
+                    // JSON 解析失败通常是因为数据不完整，但在有了 buffer 机制后，这种情况会极少发生
+                    // console.error("JSON Parse Error:", e);
                   }
-                } catch (e) {
-                  // 忽略解析错误
                 }
               }
             }
           }
         } catch (err) {
           console.error("Stream Error:", err);
+          controller.error(err);
         } finally {
           controller.close();
         }
       }
     });
 
-    return new Response(stream, { 
-      headers: { 
-        'Content-Type': 'text/plain; charset=utf-8', // 发送纯文本
-        'Cache-Control': 'no-cache' 
-      } 
-    });
+    return new Response(stream, { headers: { 'Content-Type': 'text/event-stream' } });
 
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), { status: 500 });
