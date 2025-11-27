@@ -7,7 +7,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
-        /* 样式保持不变 */
         body { margin: 0; height: 100vh; font-family: 'Zen Maru Gothic', sans-serif; color: #4a4a4a; background-color: #d7ccc8; background-image: url('images/sandbox_bg.jpg'), url('https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?q=80&w=2070'); background-size: cover; background-position: center; background-repeat: no-repeat; display: flex; justify-content: center; align-items: center; overflow: hidden; }
         body::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle, rgba(0,0,0,0) 0%, rgba(0,0,0,0.4) 100%); pointer-events: none; z-index: -1; }
         #sandbox-panel { width: 90%; max-width: 550px; height: 85vh; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px) saturate(180%); border-radius: 24px; border: 1px solid rgba(255, 255, 255, 0.6); box-shadow: 0 30px 60px rgba(0,0,0,0.3); display: flex; flex-direction: column; overflow: hidden; animation: floatUp 0.8s ease; }
@@ -21,7 +20,6 @@
         #chat-box::-webkit-scrollbar { width: 0; }
         .msg { max-width: 85%; padding: 15px 20px; border-radius: 18px; line-height: 1.6; font-size: 15px; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .bot-msg { align-self: flex-start; background: #fff; color: #444; border-bottom-left-radius: 4px; }
-        /* 图片自适应 */
         .bot-msg img { max-width: 100%; border-radius: 10px; margin-top: 10px; display: block; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
         .bot-msg p { margin: 0 0 10px 0; } .bot-msg p:last-child { margin-bottom: 0; }
         .user-msg { align-self: flex-end; background: #8d6e63; color: #fff; border-bottom-right-radius: 4px; }
@@ -76,7 +74,6 @@
         addMessage(text, 'user');
         userInput.value = '';
 
-        // 显示加载状态
         const loadingId = addMessage('<span style="color:#aaa">...沙盘构建中...</span>', 'bot');
         let fullResponse = "";
         
@@ -86,7 +83,8 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     query: text,
-                    bot_id: SANDBOX_BOT_ID
+                    bot_id: SANDBOX_BOT_ID,
+                    conversation_id: "sandbox_" + Date.now() 
                 })
             });
 
@@ -111,38 +109,41 @@
 
                             const data = JSON.parse(rawJson);
                             
-                            // ✅ 只要是正在打字的内容 (delta)，我们都先拿来看看
-                            // 不再限制 type === 'answer'，防止误杀图片
+                            // ✂️ 只接收 delta (正在打字)
                             if (data.event === 'conversation.message.delta' && data.message) {
-                                
-                                // 🚫 1. 坚决屏蔽 "追问" (Follow-up)
-                                if (data.message.type === 'follow_up') continue;
-
                                 let content = data.message.content;
                                 if (!content) continue;
 
-                                // 🟢 2. 智能提取图片
-                                // 如果内容里包含图片链接，哪怕它是一堆代码，也强行提取出来
-                                if (content.match(/https?:\/\/[^\s"']+\.(png|jpg|jpeg|webp)/)) {
-                                    // 提取 URL 并包装成 Markdown
-                                    content = content.replace(/(https?:\/\/[^\s"']+\.(png|jpg|jpeg|webp))/g, '\n\n![沙盘]($1)\n\n');
-                                }
+                                // 🟢 关键修改：图片检测逻辑更宽容
+                                // 只要包含 ![ (Markdown图片) 或者 s.coze.cn (Coze图片域名)，就认为是好消息，放行！
+                                const isImage = content.includes('![') || content.includes('s.coze.cn');
+                                const isAnswer = data.message.type === 'answer';
 
-                                // 🛡️ 3. 垃圾代码过滤器 (黑名单模式)
-                                // 只有明确长得像代码的，才拦截。其他的文字统统放行！
-                                if (
-                                    content.trim().startsWith('{') || 
-                                    content.includes('"msg_type"') || 
-                                    content.includes('FunctionCall') ||
-                                    content.includes('INSERT INTO') ||
-                                    content.includes('streaming reply')
-                                ) {
-                                    continue; 
-                                }
+                                // 只有是正式回答，或者包含图片时才显示
+                                if (isAnswer || isImage) {
+                                    
+                                    // 🚫 拦截追问
+                                    if (data.message.type === 'follow_up') continue;
 
-                                fullResponse += content;
-                                loadingBubble.innerHTML = marked.parse(fullResponse);
-                                chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
+                                    // 🛡️ 拦截代码日志
+                                    if (
+                                        content.trim().startsWith('{') || 
+                                        content.includes('"msg_type"') || 
+                                        content.includes('FunctionCall') || 
+                                        content.includes('INSERT INTO')
+                                    ) {
+                                        continue; 
+                                    }
+
+                                    // 🛠️ 如果是裸链接，强制转 Markdown
+                                    if (content.includes('s.coze.cn') && !content.includes('![')) {
+                                        content = `\n![沙盘](${content})\n`;
+                                    }
+
+                                    fullResponse += content;
+                                    loadingBubble.innerHTML = marked.parse(fullResponse);
+                                    chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
+                                }
                             }
                         } catch(e) {}
                     }
