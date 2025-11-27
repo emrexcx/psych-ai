@@ -60,13 +60,33 @@
     </div>
 
 <script>
-    // ⚠️⚠️⚠️ 替换为真实 Bot ID 和图片路径 ⚠️⚠️⚠️
+    // ⚠️⚠️⚠️ 再次确认：请填入真实的 Bot ID ⚠️⚠️⚠️
     const agents = [
-        { id: 'freud', name: 'S. Freud', title: '精神分析', theme: 'card-freud', botId: '7576937790106402857', avatar: 'images/freud.png' },
-        { id: 'jung', name: 'C.G. Jung', title: '分析心理学', theme: 'card-jung', botId: '7576939753841508378', avatar: 'images/jung.png' },
-        { id: 'adler', name: 'A. Adler', title: '个体心理学', theme: 'card-adler', botId: '7576940585882550326', avatar: 'images/adler.png' },
-        { id: 'contemporary', name: 'Contemporary', title: '当代动力学', theme: 'card-contemp', botId: '7576941130223255578', avatar: 'images/contemp.png' },
-        { id: 'narrative', name: 'Narrative', title: '叙事治疗', theme: 'card-narrative', botId: '7576941141384544262', avatar: 'images/narrative.png' }
+        { 
+            id: 'freud', name: 'S. Freud', title: '精神分析', theme: 'card-freud', 
+            botId: '7576937790106402857', 
+            avatar: 'images/freud2.png' 
+        },
+        { 
+            id: 'jung', name: 'C.G. Jung', title: '分析心理学', theme: 'card-jung', 
+            botId: '7576939753841508378', 
+            avatar: 'images/jung2.png' 
+        },
+        { 
+            id: 'adler', name: 'A. Adler', title: '个体心理学', theme: 'card-adler', 
+            botId: '7576940585882550326', 
+            avatar: 'images/adler2.png' 
+        },
+        { 
+            id: 'contemporary', name: 'Contemporary', title: '当代动力学', theme: 'card-contemp', 
+            botId: '7576941130223255578', 
+            avatar: 'images/contemp2.png' 
+        },
+        { 
+            id: 'narrative', name: 'Narrative', title: '叙事治疗', theme: 'card-narrative', 
+            botId: '7576941141384544262', 
+            avatar: 'images/narrative2.png' 
+        }
     ];
 
     const container = document.getElementById('panels-container');
@@ -113,20 +133,24 @@
         const experiencePrompt = `【指令：现在是专业的心理咨询会诊模式。请忽略其他专家的存在，基于你的理论流派，提供一份独立、冷静、深度的分析报告。语气要专业、客观。不要攻击他人。】\n\n用户困扰：${query}`;
 
         const tasks = agents.map(agent => {
-            return simulateCozeAPIStream(agent.botId, experiencePrompt, (chunk) => {
+            return simulateCozeAPIStream(agent.botId, experiencePrompt, (chunk, isFirstChunk) => {
                 const el = document.getElementById(`output-${agent.id}`);
                 
                 // 累加文字
                 agentResponses[agent.id] += chunk;
 
-                // 🟢 核心清洗逻辑：去掉 [1] therapy_... 这种引用
-                let cleanText = agentResponses[agent.id]
-                    // 去掉 [数字] therapy_ 开头的引用
-                    .replace(/\[\d+\]\s*therapy_[^\n]*/gi, '')
-                    // 去掉 [数字] doc_ 开头的引用
-                    .replace(/\[\d+\]\s*doc_[^\n]*/gi, '')
-                    // 去掉 Coze 特殊的【†source】引用
-                    .replace(/【.*?†source】/g, '');
+                // 🟢 强力清洗逻辑 🟢
+                let cleanText = agentResponses[agent.id];
+                
+                // 1. 暴力删除以 [数字] therapy_ 或 [数字] doc_ 开头的一整行或一大段
+                // 说明：(?=...) 是前瞻断言，匹配到下一个换行符为止
+                cleanText = cleanText.replace(/\[\d+\]\s*(therapy|doc)_.+?(\n|$)/g, "");
+                
+                // 2. 删除 Coze 特殊引用标记 【†source】
+                cleanText = cleanText.replace(/【.*?†source】/g, "");
+                
+                // 3. 删除正文中残留的 [1] [2] 这种纯数字引用标（可选，如果你想留着正文里的标号，可以删掉这行）
+                cleanText = cleanText.replace(/\[\d+\]/g, "");
 
                 // 渲染
                 el.innerHTML = marked.parse(cleanText);
@@ -138,10 +162,9 @@
         btn.disabled = false; btn.innerText = '开始会诊';
     }
 
-    // --- 真实 API 调用 (带过滤) ---
+    // --- 真实 API 调用 ---
     async function simulateCozeAPIStream(botId, fullPrompt, callback) {
         if(!botId) return;
-
         try {
             const response = await fetch('/api/chat', {
                 method: 'POST',
@@ -152,17 +175,14 @@
                     conversation_id: "exp_" + Date.now()
                 })
             });
-
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let isFirst = true;
-
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
                 const chunk = decoder.decode(value, { stream: true });
                 const lines = chunk.split('\n');
-                
                 for (const line of lines) {
                     if (line.startsWith('data:') && line.length > 5) {
                         try {
@@ -175,10 +195,6 @@
                     }
                 }
             }
-        } catch (err) {
-            callback("[网络连接错误]");
-        }
+        } catch (err) { callback("[连接错误]"); }
     }
 </script>
-</body>
-</html>
