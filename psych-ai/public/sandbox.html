@@ -107,79 +107,66 @@
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
 
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                
-                const chunk = decoder.decode(value, { stream: true });
-                const lines = chunk.split('\n');
-                
-                for (const line of lines) {
-                    // 处理以 data: 开头的流式数据
-                    if (line.startsWith('data:') && line.length > 5) {
-                        try {
-                            const rawJson = line.slice(5).trim();
-                            // 遇到 [DONE] 结束标志
-                            if (rawJson === '[DONE]') continue; 
+while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
 
-                            const data = JSON.parse(rawJson);
-                            let content = "";
+    const chunk = decoder.decode(value, { stream: true });
+    const lines = chunk.split("\n");
 
-                            // === 兼容各种 Coze 返回格式 ===
-                            // 1. 标准消息格式
-                            if (data.message && data.message.content) {
-                                if (data.message.type === 'follow_up') continue; 
-                                content = data.message.content;
-                            } 
-                            // 2. 只有 data 字段的格式 (你的截图情况)
-                            else if (data.data && typeof data.data === 'string') {
-                                content = data.data;
-                            }
-                            // 3. 只有 content 字段
-                            else if (data.content) {
-                                content = data.content;
-                            }
+    for (const line of lines) {
+        if (!line.startsWith("data:")) continue;
+        const raw = line.slice(5).trim();
+        if (!raw || raw === "[DONE]") continue;
 
-                            // 过滤无用信息
-                            if (!content || content.includes('FunctionCall')) continue;
+        let data;
+        try {
+            data = JSON.parse(raw);
+        } catch {
+            continue;
+        }
 
-                            // 累加内容
-                            fullResponse += content;
+        // ========== 普通文本 ==========
+        if (data.event === "delta" && data.content) {
+            fullResponse += data.content;
 
-                            // === 关键：实时图片修复 ===
-                            // 检查文本中是否有 s.coze.cn 的链接，并且没有被 markdown 图片语法包裹
-                            // 如果发现了裸露的链接，强制包裹上 ![]()
-                            let displayContent = fullResponse.replace(
-                                /(?<!\()https:\/\/s\.coze\.cn\/[^\s\)]+/g, 
-                                (match) => `\n![沙盘作品](${match})\n`
-                            );
+            // 强制把裸链接转成图片 markdown
+            const display = fullResponse.replace(
+                /https:\/\/s\.coze\.cn\/[^\s\)]+/g,
+                (m) => `\n![]( ${m} )\n`
+            );
 
-                            // 实时更新同一个气泡的内容 (不会创建新气泡)
-                            botMsgDiv.innerHTML = marked.parse(displayContent);
-                            
-                            // 保持滚动在底部
-                            chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
+            botMsgDiv.innerHTML = marked.parse(display);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
 
-                        } catch(e) {
-                            // 忽略 JSON 解析过程中的小错误 (因为流式数据可能断裂)
-                        }
-                    }
-                }
-            }
-            
-            // 如果循环结束后 fullResponse 还是空的 (说明出错了但没报错)
-            if (fullResponse.trim() === "") {
-                botMsgDiv.innerHTML = "<i>(沙盘似乎需要一点时间来显影，请重试...)</i>";
+        // ========== 文件处理（图片/附件）==========
+        if (data.event === "file" && data.url) {
+
+            // 如果是图片
+            if (data.mime_type.startsWith("image/")) {
+                botMsgDiv.innerHTML += `
+                    <div style="margin-top:12px;">
+                        <img src="${data.url}" style="max-width:100%; border-radius:12px;">
+                    </div>
+                `;
             }
 
-        } catch (err) {
-            console.error("Network Error:", err);
-            // 在同一个气泡里报错
-            botMsgDiv.innerHTML = "<span style='color:#d32f2f'>[连接已断开，请刷新页面重试]</span>";
-        } finally {
-            sendBtn.disabled = false;
+            // 非图片 → 下载链接
+            else {
+                botMsgDiv.innerHTML += `
+                    <div style="margin-top:12px;">
+                        📎 <a href="${data.url}" download="${data.name}" target="_blank">
+                        下载文件：${data.name}
+                        </a>
+                    </div>
+                `;
+            }
+
+            chatBox.scrollTop = chatBox.scrollHeight;
         }
     }
+}
 
     function addMessage(html, type) {
         const div = document.createElement('div');
@@ -194,5 +181,6 @@
 </script>
 </body>
 </html>
+
 
 
