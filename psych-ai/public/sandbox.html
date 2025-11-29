@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>潜意识沙盘 - 沉浸体验</title>
     <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -31,7 +31,7 @@
         button:hover { background: #4e342e; }
         button:disabled { background: #ccc; cursor: not-allowed; }
         button svg { width: 24px; height: 24px; fill: currentColor; }
-
+        
         /* Loading 动画 */
         .typing-indicator span { animation: blink 1.4s infinite both; height: 5px; width: 5px; background: #888; border-radius: 50%; display: inline-block; margin: 0 1px; }
         .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
@@ -40,6 +40,7 @@
     </style>
 </head>
 <body>
+
 <div id="sandbox-panel">
     <div class="header">
         <a href="index.html" class="home-btn">← 返回</a>
@@ -64,40 +65,32 @@
 </div>
 
 <script>
-    // ⚠️ 你的沙盘 Bot ID
-    const SANDBOX_BOT_ID = '7574847485391929396';
-    let conversationId = "sandbox_" + Date.now();
+    // ⚠️⚠️⚠️ 你的沙盘 Bot ID ⚠️⚠️⚠️
+    const SANDBOX_BOT_ID = '7574847485391929396'; 
+    let conversationId = "sandbox_" + Date.now(); 
 
     const chatBox = document.getElementById('chat-box');
     const userInput = document.getElementById('user-input');
     const sendBtn = document.getElementById('send-btn');
 
-    function handleKey(e) { if (e.key === 'Enter') sendMessage(); }
-
-    function addMessage(html, type) {
-        const div = document.createElement('div');
-        const id = 'msg-' + Date.now() + Math.random().toString(36).substr(2, 9);
-        div.id = id;
-        div.className = `msg ${type}-msg`;
-        div.innerHTML = html;
-        chatBox.appendChild(div);
-        chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
-        return id;
-    }
+    function handleKey(e) { if(e.key === 'Enter') sendMessage(); }
 
     async function sendMessage() {
         const text = userInput.value.trim();
-        if (!text) return;
+        if(!text) return;
 
+        // 1. 发送用户消息
         sendBtn.disabled = true;
         addMessage(text, 'user');
         userInput.value = '';
 
+        // 2. 预先创建一个机器人消息气泡 (这是唯一的机器人气泡，不会多出框)
+        // 初始状态显示为 "思考中" 的动画
         const loadingHtml = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
         const botMsgId = addMessage(loadingHtml, 'bot');
         const botMsgDiv = document.getElementById(botMsgId);
-
-        let fullResponse = ""; // 累积文本（用于 markdown 渲染）
+        
+        let fullResponse = ""; // 用于积累所有的回复内容
 
         try {
             const response = await fetch('/api/chat', {
@@ -111,119 +104,95 @@
                 })
             });
 
-            if (!response.ok) {
-                botMsgDiv.innerHTML = `<span style="color:#d32f2f">错误：无法连接到后端 (status ${response.status})</span>`;
-                return;
-            }
-
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
-            let bufferChunk = "";
 
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
-
-                bufferChunk += decoder.decode(value, { stream: true });
-                // SSE 风格：以两个换行分割为一条完整 data
-                const parts = bufferChunk.split("\n\n");
-                // 最后一部分可能不完整，保留到下一轮
-                bufferChunk = parts.pop();
-
-                for (const part of parts) {
-                    const lines = part.split("\n").map(l => l.trim()).filter(Boolean);
-                    for (const line of lines) {
-                        if (!line.startsWith("data:")) continue;
-                        const raw = line.slice(5).trim();
-                        if (!raw || raw === "[DONE]") continue;
-
-                        let parsed;
+                
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split('\n');
+                
+                for (const line of lines) {
+                    // 处理以 data: 开头的流式数据
+                    if (line.startsWith('data:') && line.length > 5) {
                         try {
-                            parsed = JSON.parse(raw);
-                        } catch (err) {
-                            // 可能是分片，忽略
-                            continue;
-                        }
+                            const rawJson = line.slice(5).trim();
+                            // 遇到 [DONE] 结束标志
+                            if (rawJson === '[DONE]') continue; 
 
-                        // 兼容后端：后端把 event 写为 'conversation.message.delta'，并把内容放到 message 中
-                        // 有两种常见形式：1) { event: 'conversation.message.delta', message: { content, type } }
-                        // 或 2) 直接 { event: 'conversation.message.delta', message: { type: 'file', url, mime_type, name } }
-                        const event = parsed.event || parsed.type || "";
-                        const message = parsed.message || parsed;
+                            const data = JSON.parse(rawJson);
+                            let content = "";
 
-                        // 处理 delta 文本流（保持原有行为）
-                        if ((event === "conversation.message.delta" || event === "delta") && message) {
-                            const msgType = message.type || "";
-                            // 文件类型（后端在 completed 时发 file-like message with type="file"）
-                            if (msgType === "file" || msgType === "file_result") {
-                                const url = message.url || message.data || message.content;
-                                const mime = message.mime_type || message.mime || "";
-                                const name = message.name || "file";
-
-                                if (url) {
-                                    if (mime && mime.startsWith("image/")) {
-                                        // 直接在气泡追加图片
-                                        const imgWrap = document.createElement('div');
-                                        imgWrap.style.marginTop = "12px";
-                                        const img = document.createElement('img');
-                                        img.src = url;
-                                        img.style.maxWidth = "100%";
-                                        img.style.borderRadius = "12px";
-                                        imgWrap.appendChild(img);
-                                        botMsgDiv.appendChild(imgWrap);
-                                    } else {
-                                        const aWrap = document.createElement('div');
-                                        aWrap.style.marginTop = "12px";
-                                        aWrap.innerHTML = `📎 <a href="${url}" download="${name}" target="_blank">下载文件：${name}</a>`;
-                                        botMsgDiv.appendChild(aWrap);
-                                    }
-                                    chatBox.scrollTop = chatBox.scrollHeight;
-                                }
-                                continue; // 处理完 file，continue 下一条
+                            // === 兼容各种 Coze 返回格式 ===
+                            // 1. 标准消息格式
+                            if (data.message && data.message.content) {
+                                if (data.message.type === 'follow_up') continue; 
+                                content = data.message.content;
+                            } 
+                            // 2. 只有 data 字段的格式 (你的截图情况)
+                            else if (data.data && typeof data.data === 'string') {
+                                content = data.data;
+                            }
+                            // 3. 只有 content 字段
+                            else if (data.content) {
+                                content = data.content;
                             }
 
-                            // 普通文本：累积并渲染 markdown（同时把裸链替换成图片 markdown）
-                            if (message.content) {
-                                fullResponse += message.content;
+                            // 过滤无用信息
+                            if (!content || content.includes('FunctionCall')) continue;
 
-                                const display = fullResponse.replace(
-                                    /https:\/\/s\.coze\.cn\/[^\s\)]+/g,
-                                    (m) => `\n![](${m})\n`
-                                );
+                            // 累加内容
+                            fullResponse += content;
 
-                                // 使用 marked 渲染 HTML，替换当前机器人的气泡内容（保留已追加的图片/附件不会被清除）
-                                botMsgDiv.innerHTML = marked.parse(display);
-                                chatBox.scrollTop = chatBox.scrollHeight;
-                            }
-                        } else {
-                            // 兼容：如果后端直接把 content 放在 top level（少见）
-                            if (parsed.content) {
-                                fullResponse += parsed.content;
-                                const display = fullResponse.replace(
-                                    /https:\/\/s\.coze\.cn\/[^\s\)]+/g,
-                                    (m) => `\n![](${m})\n`
-                                );
-                                botMsgDiv.innerHTML = marked.parse(display);
-                                chatBox.scrollTop = chatBox.scrollHeight;
-                            }
+                            // === 关键：实时图片修复 ===
+                            // 检查文本中是否有 s.coze.cn 的链接，并且没有被 markdown 图片语法包裹
+                            // 如果发现了裸露的链接，强制包裹上 ![]()
+                            let displayContent = fullResponse.replace(
+                                /(?<!\()https:\/\/s\.coze\.cn\/[^\s\)]+/g, 
+                                (match) => `\n![沙盘作品](${match})\n`
+                            );
+
+                            // 实时更新同一个气泡的内容 (不会创建新气泡)
+                            botMsgDiv.innerHTML = marked.parse(displayContent);
+                            
+                            // 保持滚动在底部
+                            chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
+
+                        } catch(e) {
+                            // 忽略 JSON 解析过程中的小错误 (因为流式数据可能断裂)
                         }
                     }
                 }
             }
-
-            // 如果到这里都没有任何内容，给个提示
-            if (fullResponse.trim() === "" && botMsgDiv.innerHTML.trim() === loadingHtml) {
+            
+            // 如果循环结束后 fullResponse 还是空的 (说明出错了但没报错)
+            if (fullResponse.trim() === "") {
                 botMsgDiv.innerHTML = "<i>(沙盘似乎需要一点时间来显影，请重试...)</i>";
             }
 
         } catch (err) {
-            console.error("Network/Stream Error:", err);
-            const botMsgDivRef = document.getElementById(botMsgId);
-            if (botMsgDivRef) botMsgDivRef.innerHTML = "<span style='color:#d32f2f'>[连接已断开，请刷新页面重试]</span>";
+            console.error("Network Error:", err);
+            // 在同一个气泡里报错
+            botMsgDiv.innerHTML = "<span style='color:#d32f2f'>[连接已断开，请刷新页面重试]</span>";
         } finally {
             sendBtn.disabled = false;
         }
     }
+
+    function addMessage(html, type) {
+        const div = document.createElement('div');
+        const id = 'msg-' + Date.now() + Math.random().toString(36).substr(2, 9); // 生成唯一ID
+        div.id = id;
+        div.className = `msg ${type}-msg`;
+        div.innerHTML = html;
+        chatBox.appendChild(div);
+        chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
+        return id; // 返回ID以便后续查找更新
+    }
 </script>
 </body>
 </html>
+
+
