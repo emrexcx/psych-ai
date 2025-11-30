@@ -6,49 +6,94 @@
     <title>Psycho Multiverse | 心理多元宇宙</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Noto+Serif+SC:wght@700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        /* --- 全局宇宙背景 --- */
+        /* --- 1. 全局宇宙背景 --- */
         body {
             margin: 0; height: 100vh; overflow: hidden;
             background-color: #000;
-            /* 深空渐变背景 */
             background-image: radial-gradient(circle at center, #1a1a2e 0%, #000000 100%);
-            font-family: 'Orbitron', sans-serif; /* 科幻字体 */
+            font-family: 'Orbitron', sans-serif;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             color: #fff;
+            position: relative; /* 为绝对定位的小人做参考 */
         }
-        
-        /* --- 标题区 --- */
+
+        /* --- 2. 漂浮的背景装饰小人 (新加部分) --- */
+        .floating-char {
+            position: absolute;
+            z-index: 1; /* 在背景之上，但在卡片之下(如果想盖住卡片就改大) */
+            pointer-events: none; /* 让鼠标可以穿透图片点击后面的东西 */
+            filter: drop-shadow(0 0 20px rgba(255, 105, 180, 0.3)); /* 加一点粉色光晕 */
+            animation: floatAnim 6s ease-in-out infinite;
+        }
+
+        /* 图片样式微调：如果是JPG，给个圆角 */
+        .floating-char img {
+            width: 100%; height: auto;
+            border-radius: 30px; /* 防止 JPG 直角太生硬 */
+            opacity: 0.9;
+        }
+
+        /* A. 左下角的粉色小人组 (Image 1) */
+        .char-group {
+            width: 280px;
+            bottom: 5%;
+            left: 5%;
+            animation-delay: 0s;
+        }
+
+        /* B. 标题旁的挥手小人 (Image 2) */
+        .char-wave {
+            width: 180px;
+            top: 15%;
+            left: 15%;
+            animation-delay: 2s; /* 错开动画时间 */
+            transform: rotate(-10deg); /*稍微歪一点更可爱*/
+        }
+
+        /* C. 右下角的VR眼镜小人 (Image 3) */
+        .char-vr {
+            width: 240px;
+            bottom: 10%;
+            right: 5%;
+            animation-delay: 4s;
+        }
+
+        /* 浮动动画 */
+        @keyframes floatAnim {
+            0% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(2deg); }
+            100% { transform: translateY(0px) rotate(0deg); }
+        }
+
+
+        /* --- 3. 标题区 --- */
         .title-area {
             text-align: center; margin-bottom: 50px; z-index: 10;
-            animation: fadeInDown 1s ease-out;
+            position: relative;
         }
         h1 {
             font-size: 3.5rem; margin: 0; font-weight: 700; letter-spacing: 6px;
             text-transform: uppercase;
-            /* 文字带有淡淡的星光渐变 */
             background: linear-gradient(to right, #fff, #a0e9ff);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
             text-shadow: 0 0 30px rgba(0, 180, 255, 0.5);
         }
         p { 
             color: #999; margin-top: 15px; font-size: 1.1rem; letter-spacing: 4px; 
-            text-transform: uppercase; font-weight: 400; font-family: 'Inter', sans-serif;
+            text-transform: uppercase; font-family: 'Inter', sans-serif;
         }
 
-        /* --- 传送门容器 --- */
+        /* --- 4. 传送门容器 --- */
         .portal-container {
             display: flex; gap: 25px; width: 90%; max-width: 1200px; height: 60vh;
-            perspective: 1000px; /* 增加 3D 透视感 */
-            animation: fadeInUp 1s ease-out 0.3s backwards;
+            perspective: 1000px;
+            z-index: 10; /* 确保卡片在小人上面，便于点击 */
         }
 
-        /* --- 卡片基础样式 --- */
         .portal-card {
-            flex: 1; /* 默认大家平分宽度 */
-            position: relative; cursor: pointer;
+            flex: 1; position: relative; cursor: pointer;
             border-radius: 24px; overflow: hidden;
             text-decoration: none; color: #fff;
-            /* 极强的过渡效果，实现丝滑切换 */
             transition: all 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
             border: 2px solid rgba(255,255,255,0.1);
             display: flex; flex-direction: column; justify-content: flex-end; padding: 40px;
@@ -56,96 +101,81 @@
             background-size: cover; background-position: center;
         }
         
-        /* 黑色遮罩层，让文字更清晰 */
         .portal-card::before {
             content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.3) 100%);
+            background: linear-gradient(to top, rgba(0,0,0,0.85), transparent);
             z-index: 1; transition: 0.6s;
         }
 
-        /* --- 交互核心：悬停动效 --- */
-        /* 当鼠标进入容器，所有卡片稍微变暗、变灰 */
-        .portal-container:hover .portal-card { opacity: 0.6; filter: grayscale(60%) blur(1px); transform: scale(0.98); }
-        
-        /* 当鼠标悬停在特定卡片上：变宽、变亮、聚焦、发光 */
+        /* 交互：卡片悬停 */
+        .portal-container:hover .portal-card { opacity: 0.4; filter: grayscale(80%); transform: scale(0.98); }
         .portal-container .portal-card:hover { 
-            flex: 2.2; /* 宽度变大，挤压别人 */
-            opacity: 1; filter: grayscale(0%) blur(0px); 
-            transform: scale(1.02); z-index: 10;
+            flex: 2.2; opacity: 1; filter: grayscale(0%); 
+            transform: scale(1.02); z-index: 20;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
         }
-        .portal-card:hover::before { opacity: 0.5; } /* 遮罩变淡 */
 
-
-        /* --- 各个世界的独特风格 --- */
-        
-        /* 1. 思想乱斗 (Debate) - 保持原样 */
+        /* --- 卡片背景定义 (改回场景图) --- */
+        /* 1. 乱斗 */
         .card-debate {
-            background-image: url('https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=2070');
+            background-image: url('https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=2070'); /* 赛博朋克红蓝 */
             border-color: #bd00ff;
         }
-        .portal-container .card-debate:hover {
-            border-color: #bd00ff; box-shadow: 0 0 50px rgba(189, 0, 255, 0.6);
-        }
-        .card-debate h2 { color: #e0aaff; text-shadow: 0 0 15px #bd00ff; }
+        .card-debate:hover { border-color: #bd00ff; box-shadow: 0 0 40px rgba(189, 0, 255, 0.6); }
+        .card-debate h2 { color: #e0aaff; text-shadow: 0 0 10px #bd00ff; }
 
-
-        /* 2. 心灵栖息 (Collab) - 🟢 替换为第一张可爱的粉色小人图 */
+        /* 2. 栖息 (暖色房间) */
         .card-collab {
-            /* 使用您提供的第一张图片 */
-            background-image: url('image_6.png'); 
-            background-position: center top; /* 调整位置让小人居中 */
-            /* 改为温馨的粉色调 */
-            border-color: #ff8fa3; 
+            background-image: url('https://images.unsplash.com/photo-1595914619734-d1932338661c?q=80&w=2070'); /* 温馨房间 */
+            border-color: #ffb74d;
         }
-        .portal-container .card-collab:hover {
-            /* 粉色光晕 */
-            border-color: #ff8fa3; box-shadow: 0 0 50px rgba(255, 143, 163, 0.6);
-        }
-        /* 文字颜色改为柔和的粉白 */
-        .card-collab h2 { color: #ffd1dc; text-shadow: 0 0 15px #ff8fa3; font-family: 'Noto Serif SC', serif; }
+        .card-collab:hover { border-color: #ffb74d; box-shadow: 0 0 40px rgba(255, 183, 77, 0.6); }
+        .card-collab h2 { color: #ffe0b2; text-shadow: 0 0 10px #ffb74d; font-family: 'Noto Serif SC', serif; }
 
-
-        /* 3. 潜意识沙盘 (Sandbox) - 🟢 替换为第二张戴眼镜的小人图 */
+        /* 3. 沙盘 (微缩景观) */
         .card-sandbox {
-            /* 使用您提供的第二张图片 */
-            background-image: url('image_7.png');
-            /* 保持原来的青色科技调，很配眼镜 */
+            background-image: url('https://images.unsplash.com/photo-1516781273933-72276536066c?q=80&w=2070'); /* 抽象星空/沙盘 */
             border-color: #4db6ac;
         }
-        .portal-container .card-sandbox:hover {
-            border-color: #4db6ac; box-shadow: 0 0 50px rgba(77, 182, 172, 0.6);
-        }
-        .card-sandbox h2 { color: #b2dfdb; text-shadow: 0 0 15px #4db6ac; letter-spacing: 4px; }
+        .card-sandbox:hover { border-color: #4db6ac; box-shadow: 0 0 40px rgba(77, 182, 172, 0.6); }
+        .card-sandbox h2 { color: #b2dfdb; text-shadow: 0 0 10px #4db6ac; }
 
 
-        /* --- 卡片文字内容 --- */
-        .card-content { position: relative; z-index: 2; pointer-events: none; /* 防止文字遮挡点击 */ }
+        /* 文字内容 */
+        .card-content { position: relative; z-index: 2; }
         h2 { 
             margin: 0 0 10px 0; font-size: 2.2rem; font-weight: 700; 
-            transform: translateY(20px); transition: 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+            transform: translateY(20px); transition: 0.6s;
         }
         .desc { 
-            margin: 0; color: rgba(255,255,255,0.85); font-size: 1rem; 
-            opacity: 0; transform: translateY(20px); transition: 0.6s 0.1s cubic-bezier(0.25, 0.8, 0.25, 1);
-            font-family: 'Inter', sans-serif; letter-spacing: 1px; line-height: 1.5;
+            margin: 0; color: rgba(255,255,255,0.8); font-size: 1rem; 
+            opacity: 0; transform: translateY(20px); transition: 0.6s 0.1s;
+            font-family: 'Inter', sans-serif;
         }
-        /* 悬停时文字浮现 */
         .portal-card:hover h2, .portal-card:hover .desc { transform: translateY(0); opacity: 1; }
-        
-        /* 入场动画 */
-        @keyframes fadeInDown { from { opacity:0; transform:translateY(-30px); } to { opacity:1; transform:translateY(0); } }
-        @keyframes fadeInUp { from { opacity:0; transform:translateY(30px); } to { opacity:1; transform:translateY(0); } }
 
-        /* 响应式适配 */
+        /* 移动端适配：把小人藏起来或者变小 */
         @media (max-width: 768px) {
             .portal-container { flex-direction: column; height: auto; }
-            .portal-card { height: 200px; flex: none !important; width: 100%; }
-            h1 { font-size: 2rem; }
+            .portal-card { height: 200px; width: 100%; }
+            .floating-char { display: none; } /* 手机屏幕太小，建议隐藏装饰 */
         }
-
     </style>
 </head>
 <body>
+
+    <div class="floating-char char-group">
+        <img src="image_bdd463.png" alt="Group Blob">
+    </div>
+
+    <div class="floating-char char-wave">
+        <img src="image_bdd446.png" alt="Waving Blob">
+    </div>
+
+    <div class="floating-char char-vr">
+        <img src="image_bdd483.jpg" alt="VR Blob">
+    </div>
+
 
     <div class="title-area">
         <h1>Psycho Multiverse</h1>
