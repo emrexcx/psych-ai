@@ -49,6 +49,8 @@
             padding: 5px 12px; border-radius: 20px; transition: 0.2s;
         }
         .home-link:hover { background: #8d6e63; color: #fff; }
+        
+        /* 动态生成的选择区 */
         #selection-area {
             padding: 15px; background: #fff8e1;
             display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;
@@ -68,6 +70,7 @@
             border: 3px solid #e0e0e0; transition: 0.3s; background-color: #fff;
         }
         .agent-label { margin-top: 5px; font-size: 12px; font-weight: bold; color: #5d4037; }
+        
         #chat-stream {
             flex: 1; overflow-y: auto; padding: 30px 50px;
             display: flex; flex-direction: column; gap: 25px; z-index: 1;
@@ -127,28 +130,8 @@
         <a href="index.html" class="home-link">⌂ 首页</a>
     </div>
 
-    <div id="selection-area">
-        <div class="agent-option" onclick="toggleAgent('freud')">
-            <div class="avatar-img" style="background-image: url('https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Freud&backgroundColor=e74c3c')"></div>
-            <div class="agent-label">弗洛伊德</div>
-        </div>
-        <div class="agent-option" onclick="toggleAgent('jung')">
-            <div class="avatar-img" style="background-image: url('https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Jung&backgroundColor=9b59b6')"></div>
-            <div class="agent-label">荣格</div>
-        </div>
-        <div class="agent-option" onclick="toggleAgent('adler')">
-            <div class="avatar-img" style="background-image: url('https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Adler&backgroundColor=f39c12')"></div>
-            <div class="agent-label">阿德勒</div>
-        </div>
-        <div class="agent-option" onclick="toggleAgent('contemporary')">
-            <div class="avatar-img" style="background-image: url('https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Relational&backgroundColor=20c997')"></div>
-            <div class="agent-label">当代动力</div>
-        </div>
-        <div class="agent-option" onclick="toggleAgent('narrative')">
-            <div class="avatar-img" style="background-image: url('https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Narrative&backgroundColor=3498db')"></div>
-            <div class="agent-label">叙事治疗</div>
-        </div>
-    </div>
+    <!-- 🟢 这里的列表现在由 JavaScript 自动生成 -->
+    <div id="selection-area"></div>
 
     <div id="chat-stream">
         <div style="text-align:center; color:#bcaaa4; margin-top:50px; font-style:italic;">
@@ -163,20 +146,71 @@
 </div>
 
 <script>
-    // ⚠️⚠️⚠️ 这里一定要填入真实的 Bot ID ⚠️⚠️⚠️
+    // 🟢 1. 配置专家信息和头像
+    // 修改 avatar 字段即可更换头像，可以是网络图片，也可以是本地路径（如 'images/freud.png'）
     const agentsConfig = {
-        'freud': { name: '弗洛伊德爷爷', botId: '7576937790106402857', avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Freud&backgroundColor=e74c3c' },
-        'jung': { name: '荣格先生', botId: '7576939753841508378', avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Jung&backgroundColor=9b59b6' },
-        'adler': { name: '阿德勒教授', botId: '7576940585882550326', avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Adler&backgroundColor=f39c12' },
-        'contemporary': { name: '温暖的咨询师', botId: '7576941130223255578', avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Relational&backgroundColor=20c997' },
-        'narrative': { name: '故事疗愈师', botId: '7576941141384544262', avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Narrative&backgroundColor=3498db' }
+        'freud': { 
+            name: '弗洛伊德爷爷', 
+            botId: '7576937790106402857', 
+            avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Freud&backgroundColor=e74c3c' 
+        },
+        'jung': { 
+            name: '荣格先生', 
+            botId: '7576939753841508378', 
+            avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Jung&backgroundColor=9b59b6' 
+        },
+        'adler': { 
+            name: '阿德勒教授', 
+            botId: '7576940585882550326', 
+            avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Adler&backgroundColor=f39c12' 
+        },
+        'contemporary': { 
+            name: '温暖的咨询师', 
+            botId: '7576941130223255578', 
+            avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Relational&backgroundColor=20c997' 
+        },
+        'narrative': { 
+            name: '故事疗愈师', 
+            botId: '7576941141384544262', 
+            avatar: 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=Narrative&backgroundColor=3498db' 
+        }
     };
 
     let selectedAgentIds = []; 
-    let agentBuffers = {}; // 用于存每个人的话
+    let agentBuffers = {};
+
+    // 🟢 2. 自动渲染选择区头像
+    function renderSelectionArea() {
+        const container = document.getElementById('selection-area');
+        container.innerHTML = ''; // 清空现有内容
+
+        // 遍历配置生成 HTML
+        for (const [key, agent] of Object.entries(agentsConfig)) {
+            const div = document.createElement('div');
+            div.className = 'agent-option';
+            div.onclick = () => toggleAgent(key);
+            div.setAttribute('data-id', key); // 用于查找和样式控制
+            
+            div.innerHTML = `
+                <div class="avatar-img" style="background-image: url('${agent.avatar}')"></div>
+                <div class="agent-label">${getShortName(agent.name)}</div>
+            `;
+            container.appendChild(div);
+        }
+    }
+
+    // 辅助函数：简化显示名字
+    function getShortName(fullName) {
+        return fullName.split(' ')[0].replace(/爷爷|先生|教授|师/g, '');
+    }
+
+    // 初始化渲染
+    renderSelectionArea();
 
     function toggleAgent(agentId) {
-        const el = document.querySelector(`.agent-option[onclick="toggleAgent('${agentId}')"]`);
+        // 使用属性选择器找到对应的 DOM 元素
+        const el = document.querySelector(`.agent-option[data-id="${agentId}"]`);
+        
         if (selectedAgentIds.includes(agentId)) {
             selectedAgentIds = selectedAgentIds.filter(id => id !== agentId);
             el.classList.remove('selected');
@@ -219,18 +253,16 @@
 
             const bubbleId = appendMessage('agent', agent.name, agent.avatar, '<i style="color:#aaa">正在思考...</i>');
             
-            agentBuffers[agentKey] = ""; // 初始化 buffer
+            agentBuffers[agentKey] = "";
 
             let fullResponse = "";
             await simulateCozeAPIStream(agent.botId, promptForThisTurn, (chunk) => {
                 const bubbleEl = document.getElementById(bubbleId);
                 
-                // 累加并清洗
                 agentBuffers[agentKey] += chunk;
                 let cleanText = agentBuffers[agentKey];
                 
-                // 🟢 强力去污：去掉卡片代码、引用
-                if (cleanText.includes('card_type')) return; // 遇到代码先不显示
+                if (cleanText.includes('card_type')) return;
                 cleanText = cleanText
                     .replace(/\[\d+\]\s*therapy_[^\n]*/gi, "")
                     .replace(/(therapy|doc)_[^\n]+/gi, "")
