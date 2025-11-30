@@ -18,11 +18,11 @@
             position: relative; /* 为绝对定位的小人做参考 */
         }
 
-        /* --- 2. 漂浮的背景装饰小人 (新加部分) --- */
+        /* --- 2. 漂浮的背景装饰小人 --- */
         .floating-char {
             position: absolute;
-            z-index: 5; /* 位于背景之上，但在卡片下方(卡片hover时z-index为10) */
-            pointer-events: none; /* 让鼠标穿透图片，不影响点击 */
+            z-index: 5; /* 位于背景之上 */
+            pointer-events: none; /* 让鼠标穿透图片 */
             filter: drop-shadow(0 0 15px rgba(255, 105, 180, 0.4)); /* 柔和的粉色光晕 */
             animation: floatAnim 6s ease-in-out infinite;
             opacity: 0.9;
@@ -34,7 +34,7 @@
             display: block;
         }
         
-        /* 特殊处理：如果是JPG图片(VR那个)，加个圆角让它融合得更好 */
+        /* 特殊处理：VR图片加圆角 */
         .char-vr img {
             border-radius: 40px;
         }
@@ -47,14 +47,7 @@
             animation-delay: 0s;
         }
 
-        /* B. 标题旁的挥手小人 (char_wave.png) */
-        .char-wave {
-            width: 160px;
-            top: 18%;
-            left: 18%;
-            animation-delay: 2s; /* 错开动画时间 */
-            transform: rotate(-10deg);
-        }
+        /* (已删除挥手小人) */
 
         /* C. 右下角的VR眼镜小人 (char_vr.jpg) */
         .char-vr {
@@ -215,17 +208,14 @@
 </head>
 <body>
 
-    <!-- 🟢 漂浮装饰区 (请确保图片已重命名并放在同一目录) -->
+    <!-- 🟢 漂浮装饰区 -->
     
     <!-- 1. 左下角：粉色小人组 -->
     <div class="floating-char char-group">
         <img src="char_group.png" alt="Group Characters">
     </div>
 
-    <!-- 2. 标题左侧：挥手打招呼 -->
-    <div class="floating-char char-wave">
-        <img src="char_wave.png" alt="Waving Character">
-    </div>
+    <!-- 2. (已删除) 标题左侧：挥手打招呼 -->
 
     <!-- 3. 右下角：VR眼镜小人 -->
     <div class="floating-char char-vr">
@@ -264,5 +254,5 @@
 
 </body>
 </html>
-</html>
+
 
